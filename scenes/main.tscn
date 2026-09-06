@@ -1,0 +1,73 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/sim.gd" id="1_sim"]
+[ext_resource type="Script" path="res://scripts/agent_renderer.gd" id="2_render"]
+[ext_resource type="Script" path="res://scripts/camera_rig.gd" id="3_cam"]
+[ext_resource type="Script" path="res://scripts/player_view.gd" id="4_player"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="5_hud"]
+[ext_resource type="Script" path="res://scripts/map_renderer.gd" id="6_maprender"]
+[ext_resource type="Script" path="res://scripts/bullet_tracer.gd" id="7_tracer"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(140, 140)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.086, 0.094, 0.133, 1)
+roughness = 1.0
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_sim")
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_ground")
+surface_material_override/0 = SubResource("Mat_ground")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.86, -0.35, 0.36, 0, 0.71, 0.7, -0.5, -0.6, 0.62, 0, 20, 0)
+light_energy = 1.1
+shadow_enabled = true
+
+[node name="Agents" type="MultiMeshInstance3D" parent="."]
+script = ExtResource("2_render")
+sim_path = NodePath("..")
+
+[node name="PlayerView" type="Node3D" parent="."]
+script = ExtResource("4_player")
+sim_path = NodePath("..")
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("3_cam")
+sim_path = NodePath("..")
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+
+[node name="MapRenderer" type="Node3D" parent="."]
+script = ExtResource("6_maprender")
+
+[node name="BulletTracer" type="Node3D" parent="."]
+script = ExtResource("7_tracer")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("5_hud")
+sim_path = NodePath("..")
+
+[node name="Root" type="Control" parent="HUD"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Suspicion" type="ProgressBar" parent="HUD/Root"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 280.0
+offset_bottom = 38.0
+max_value = 100.0
+show_percentage = false
+
+[node name="Status" type="Label" parent="HUD/Root"]
+offset_left = 24.0
+offset_top = 46.0
+offset_right = 520.0
+offset_bottom = 88.0
+text = "Заражено: 0%"
