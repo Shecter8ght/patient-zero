@@ -68,11 +68,20 @@ var evac_timer  := 0.0
 var evac_count  := 0
 var evac_points: Array[Dictionary] = []
 
+# --- Мутации ---
+var active_mutations: Array[int] = []
+var _next_mut_at     := Tuning.MUT_THRESHOLD
+var _pending_mutation := false
+var grab_range_eff   := Tuning.GRAB_RANGE
+var incubation_eff   := Tuning.INCUBATION
+var _backstab_applied := false
+
 var _grid := {}
 
 signal run_finished(result: int, seconds: float)
 signal stats_changed(healthy: int, infected: int, latent: int, dead: int, cops: int, suspicion: float, arrest_prog: float, qte_key: String, evac_count: int)
 signal shot_fired(from_pos: Vector2, to_pos: Vector2)
+signal mutation_available(options: Array)
 
 
 func _ready() -> void:
@@ -176,10 +185,18 @@ func reset_run() -> void:
 	evac_timer        = Tuning.EVAC_FIRST_TIME
 	evac_count        = 0
 	evac_points.clear()
+	active_mutations.clear()
+	_next_mut_at      = Tuning.MUT_THRESHOLD
+	_pending_mutation = false
+	grab_range_eff    = Tuning.GRAB_RANGE
+	incubation_eff    = Tuning.INCUBATION
+	_backstab_applied = false
 
 
 func _physics_process(delta: float) -> void:
 	if finished != 0:
+		return
+	if _pending_mutation:
 		return
 	elapsed += delta
 	_rebuild_grid()
@@ -295,7 +312,7 @@ func _update_player(delta: float) -> void:
 	# Начать захват
 	if holding and p_grab < 0:
 		var best   := -1
-		var best_d := Tuning.GRAB_RANGE * Tuning.GRAB_RANGE
+		var best_d := grab_range_eff * grab_range_eff
 		for i in _neighbors(p_pos, p_floor):
 			var s := state[i]
 			if s != S.HEALTHY and s != S.COP:
@@ -309,6 +326,14 @@ func _update_player(delta: float) -> void:
 		if best >= 0:
 			p_grab = best
 			p_prog = 0.0
+			_backstab_applied = false
+			# MUT_BACKSTAB: жертва спиной — 1 нажатие QTE
+			if Tuning.MUT_BACKSTAB in active_mutations:
+				var to_player := (p_pos - pos[best]).normalized()
+				var vf := Vector2(cos(facing[best]), sin(facing[best]))
+				if to_player.dot(vf) < -0.4:
+					infect_thresh[best] = minf(infect_thresh[best], Tuning.QTE_HIT_PROG)
+					_backstab_applied = true
 
 	# Отпустил рано
 	if not holding and p_grab >= 0:
@@ -357,8 +382,9 @@ func _break_grab(scream: bool) -> void:
 		panic[v] = Tuning.PANIC_MEMORY
 		if scream and p_prog > 0.15:
 			suspicion += Tuning.SUSP_GRAB_FAIL
-	p_grab = -1
-	p_prog = 0.0
+	p_grab            = -1
+	p_prog            = 0.0
+	_backstab_applied = false
 	_clear_grab_qte()
 
 
@@ -367,6 +393,24 @@ func _clear_grab_qte() -> void:
 	_grab_qte_str     = ""
 	_grab_qte_timer   = 0.0
 	_grab_wrong_count = 0
+
+
+func _try_auto_grab() -> void:
+	if Tuning.MUT_AUTO_GRAB not in active_mutations or p_grab >= 0:
+		return
+	var best   := -1
+	var best_d := grab_range_eff * 4.0 * grab_range_eff * 4.0
+	for nb in _neighbors(p_pos, p_floor):
+		if (state[nb] == S.HEALTHY or state[nb] == S.COP) and floor_idx[nb] == p_floor:
+			var da := pos[nb].distance_squared_to(p_pos)
+			if da < best_d:
+				best_d = da
+				best   = nb
+	if best >= 0:
+		p_grab          = best
+		p_prog          = 0.0
+		_grab_qte_timer = 0.0
+		_backstab_applied = false
 
 
 func _count_helpers(v: int) -> int:
@@ -385,9 +429,32 @@ func _infect(i: int) -> void:
 	if state[i] == S.COP:
 		cop_count -= 1
 	state[i]       = S.LATENT
-	timer[i]       = Tuning.INCUBATION
+	timer[i]       = incubation_eff
 	grab_target[i] = -1
 	grab_prog[i]   = 0.0
+
+
+# ---------------------------------------------------------------- мутации
+func _offer_mutations() -> void:
+	var available: Array = []
+	for mid in Tuning.MUT_NAMES.size():
+		if mid not in active_mutations:
+			available.append(mid)
+	available.shuffle()
+	var options := available.slice(0, min(3, available.size()))
+	mutation_available.emit(options)
+
+
+func apply_mutation(mut_id: int) -> void:
+	if mut_id in active_mutations:
+		return
+	active_mutations.append(mut_id)
+	_pending_mutation = false
+	match mut_id:
+		Tuning.MUT_FAST_INCUBATION:
+			incubation_eff = 6.0
+		Tuning.MUT_WIDE_GRAB:
+			grab_range_eff = Tuning.GRAB_RANGE * 2.0
 
 
 # ---------------------------------------------------------------- агенты
@@ -435,6 +502,29 @@ func _update_agents(delta: float) -> void:
 				pos[i]       = tr["dest"]
 				floor_cd[i]  = Tuning.FLOOR_CD
 
+	# MUT_CROWD_SPREAD — заражённые медленно заражают соседей
+	if Tuning.MUT_CROWD_SPREAD in active_mutations:
+		var to_infect: Array[int] = []
+		for i in pos.size():
+			if state[i] != S.INFECTED and state[i] != S.INFECTED_COP:
+				continue
+			for nb in _neighbors(pos[i], floor_idx[i]):
+				if (state[nb] == S.HEALTHY or state[nb] == S.COP) and floor_idx[nb] == floor_idx[i]:
+					if pos[nb].distance_squared_to(pos[i]) < 2.5 * 2.5:
+						grab_prog[nb] += 0.04 * delta
+						if grab_prog[nb] >= 1.0:
+							grab_prog[nb] = 0.0
+							to_infect.append(nb)
+		for j in to_infect:
+			_infect(j)
+
+	# Проверка порога мутации
+	var total_infected := infected + latent + dead
+	if total_infected >= _next_mut_at and not _pending_mutation:
+		_next_mut_at += Tuning.MUT_THRESHOLD
+		_pending_mutation = true
+		_offer_mutations()
+
 	var got := infected + dead
 	var arrest_prog := p_arrest_timer / Tuning.ARREST_TIME if p_being_arrested else 0.0
 	var qte_str: String
@@ -455,7 +545,9 @@ func _tick_latent(i: int, delta: float) -> void:
 	timer[i] -= delta
 	if timer[i] <= 0.0:
 		state[i] = S.INFECTED_COP if was_cop[i] == 1 else S.INFECTED
-		suspicion += Tuning.SUSP_REVEAL
+		if Tuning.MUT_SILENT_REVEAL not in active_mutations:
+			suspicion += Tuning.SUSP_REVEAL
+			panic[i]   = Tuning.PANIC_MEMORY
 
 
 func _tick_infected(i: int, delta: float) -> void:
@@ -622,7 +714,8 @@ func _tick_civilian(i: int, delta: float) -> void:
 		if dp.length_squared() < r2 and p_grab != i:
 			flee   += dp.normalized()
 			threats += 1
-			suspicion += Tuning.SUSP_SPRINT_NEAR * delta
+			if Tuning.MUT_SILENT_SPRINT not in active_mutations:
+				suspicion += Tuning.SUSP_SPRINT_NEAR * delta
 
 	# Свидетели захвата — разбегаются от игрока
 	if p_grab >= 0 and floor_idx[i] == p_floor and i != p_grab:
@@ -827,6 +920,7 @@ func _unhandled_input(event: InputEvent) -> void:
 						p_grab = -1
 						p_prog = 0.0
 						_clear_grab_qte()
+						_try_auto_grab()
 				else:
 					# Неверная клавиша — счётчик не сбрасываем
 					_grab_qte_key   = KEY_NONE
