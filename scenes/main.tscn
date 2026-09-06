@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/sim.gd" id="1_sim"]
 [ext_resource type="Script" path="res://scripts/agent_renderer.gd" id="2_render"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/hud.gd" id="5_hud"]
 [ext_resource type="Script" path="res://scripts/map_renderer.gd" id="6_maprender"]
 [ext_resource type="Script" path="res://scripts/bullet_tracer.gd" id="7_tracer"]
+[ext_resource type="Script" path="res://scripts/barks.gd" id="8_barks"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 size = Vector2(140, 140)
@@ -46,6 +47,9 @@ script = ExtResource("6_maprender")
 
 [node name="BulletTracer" type="Node3D" parent="."]
 script = ExtResource("7_tracer")
+
+[node name="Barks" type="Node3D" parent="."]
+script = ExtResource("8_barks")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("5_hud")

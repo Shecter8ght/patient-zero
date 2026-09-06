@@ -89,6 +89,7 @@ signal stats_changed(healthy: int, infected: int, latent: int, dead: int, cops: 
 signal shot_fired(from_pos: Vector2, to_pos: Vector2)
 signal mutation_available(options: Array)
 signal horde_commanded(world_pos: Vector2)
+signal bark_event(agent: int, cat: String, pos2: Vector2, fl: int)
 
 
 func _ready() -> void:
@@ -341,6 +342,7 @@ func _update_player(delta: float) -> void:
 			p_grab = best
 			p_prog = 0.0
 			_backstab_applied = false
+			bark_event.emit(best, "grabbed", pos[best], p_floor)
 			# MUT_BACKSTAB: жертва спиной — 1 нажатие QTE
 			if Tuning.MUT_BACKSTAB in active_mutations:
 				var to_player := (p_pos - pos[best]).normalized()
@@ -396,6 +398,7 @@ func _break_grab(scream: bool) -> void:
 		panic[v] = Tuning.PANIC_MEMORY
 		if scream and p_prog > 0.15:
 			suspicion += Tuning.SUSP_GRAB_FAIL
+			bark_event.emit(v, "broke_free", pos[v], floor_idx[v])
 	p_grab            = -1
 	p_prog            = 0.0
 	_backstab_applied = false
@@ -447,6 +450,7 @@ func _infect(i: int) -> void:
 	timer[i]       = incubation_eff
 	grab_target[i] = -1
 	grab_prog[i]   = 0.0
+	bark_event.emit(i, "turning", pos[i], floor_idx[i])
 
 
 # ---------------------------------------------------------------- мутации
@@ -656,6 +660,7 @@ func _tick_cop(i: int, delta: float) -> void:
 				health[t] = maxi(0, health[t] - 1)
 				timer[i] = Tuning.COP_SHOOT_CD
 				shot_fired.emit(pos[i], pos[t])
+				bark_event.emit(i, "cop_shoot", pos[i], floor_idx[i])
 				if health[t] == 0:
 					state[t] = S.DEAD
 		else:
@@ -757,12 +762,21 @@ func _tick_civilian(i: int, delta: float) -> void:
 					finished = 3
 					run_finished.emit(3, elapsed)
 				return
+			if not going_to_evac:
+				bark_event.emit(i, "evac_call", pos[i], floor_idx[i])
 			going_to_evac = true
 			vel[i] = vel[i].lerp((to_evac / dist_evac) * Tuning.EVAC_PULL_SPEED, 0.15)
 
 	var flee   := Vector2.ZERO
 	var threats := 0
 	var r2     := Tuning.PANIC_RADIUS * Tuning.PANIC_RADIUS
+
+	# Тело рядом — замечаем (только если ещё не паникуем)
+	if state[i] == S.HEALTHY and panic[i] <= 0.0:
+		for nb in _neighbors(pos[i], floor_idx[i]):
+			if state[nb] == S.DEAD and pos[nb].distance_squared_to(pos[i]) < 5.0 * 5.0:
+				bark_event.emit(i, "spot_body", pos[i], floor_idx[i])
+				break
 
 	for j in _neighbors(pos[i], floor_idx[i]):
 		var s := state[j]
@@ -772,6 +786,8 @@ func _tick_civilian(i: int, delta: float) -> void:
 			continue
 		var d := pos[i] - pos[j]
 		if d.length_squared() < r2:
+			if flee.length_squared() < 0.001:
+				bark_event.emit(i, "spot_infected", pos[i], floor_idx[i])
 			flee   += d.normalized()
 			threats += 1
 
@@ -791,6 +807,8 @@ func _tick_civilian(i: int, delta: float) -> void:
 			threats += 1
 
 	if threats > 0:
+		if panic[i] <= 0.0:
+			bark_event.emit(i, "flee_panic", pos[i], floor_idx[i])
 		panic[i] = Tuning.PANIC_MEMORY
 
 	if panic[i] > 0.0:
