@@ -82,9 +82,17 @@ var grab_range_eff   := Tuning.GRAB_RANGE
 var incubation_eff   := Tuning.INCUBATION
 var _backstab_applied := false
 
+# --- Эскалация ---
+var escalation_level := 0
+var _esc_checked     := [false, false, false]
+
+# --- SWAT ---
+var is_swat: PackedByteArray
+
 var _grid := {}
 
 signal run_finished(result: int, seconds: float)
+signal escalation_triggered(level: int, headline: String)
 signal stats_changed(healthy: int, infected: int, latent: int, dead: int, cops: int, suspicion: float, arrest_prog: float, qte_key: String, evac_count: int)
 signal shot_fired(from_pos: Vector2, to_pos: Vector2)
 signal mutation_available(options: Array)
@@ -103,6 +111,7 @@ func reset_run() -> void:
 	grab_prog.resize(n);   panic.resize(n);       facing.resize(n)
 	alert.resize(n);       alert_target.resize(n); was_cop.resize(n)
 	floor_idx.resize(n);   floor_cd.resize(n);    health.resize(n)
+	is_swat.resize(n)
 	archetype.resize(n);   infect_thresh.resize(n); photo_timer.resize(n)
 	has_phone.resize(n);   phone_timer.resize(n)
 
@@ -159,6 +168,7 @@ func reset_run() -> void:
 		archetype[i]    = arch
 		infect_thresh[i] = Tuning.ARCH_THRESH[arch]
 		photo_timer[i]  = 0.0
+		is_swat[i]      = 0
 		var can_have_phone := (arch == Tuning.ARCH_NORMAL or arch == Tuning.ARCH_ELDER)
 		has_phone[i]   = 1 if (can_have_phone and randf() < Tuning.PHONE_FREQ) else 0
 		phone_timer[i] = 0.0
@@ -205,6 +215,8 @@ func reset_run() -> void:
 	grab_range_eff    = Tuning.GRAB_RANGE
 	incubation_eff    = Tuning.INCUBATION
 	_backstab_applied = false
+	escalation_level  = 0
+	_esc_checked      = [false, false, false]
 
 
 func _physics_process(delta: float) -> void:
@@ -451,6 +463,12 @@ func _infect(i: int) -> void:
 	grab_target[i] = -1
 	grab_prog[i]   = 0.0
 	bark_event.emit(i, "turning", pos[i], floor_idx[i])
+	# Бонус за обращение SWAT — мгновенная мутация
+	if is_swat[i] == 1:
+		is_swat[i] = 0
+		if not _pending_mutation:
+			_pending_mutation = true
+			_offer_mutations()
 
 
 # ---------------------------------------------------------------- мутации
@@ -543,6 +561,16 @@ func _update_agents(delta: float) -> void:
 		_next_mut_at += Tuning.MUT_THRESHOLD
 		_pending_mutation = true
 		_offer_mutations()
+
+	# Проверка порогов эскалации
+	var total_agents := pos.size()
+	var infected_frac := float(infected + latent + dead) / float(total_agents) if total_agents > 0 else 0.0
+	for ei in Tuning.ESC_THRESHOLDS.size():
+		if not _esc_checked[ei] and infected_frac >= Tuning.ESC_THRESHOLDS[ei]:
+			_esc_checked[ei] = true
+			escalation_level = ei + 1
+			cop_spawn_t      = 0.0
+			escalation_triggered.emit(escalation_level, Tuning.ESC_HEADLINES_RU[ei])
 
 	var got := infected + dead
 	var arrest_prog := p_arrest_timer / Tuning.ARREST_TIME if p_being_arrested else 0.0
@@ -676,7 +704,8 @@ func _tick_cop(i: int, delta: float) -> void:
 			p_prog           = 0.0
 
 	if goal != Vector2.INF:
-		vel[i] = vel[i].move_toward((goal - pos[i]).normalized() * Tuning.COP_SPEED, Tuning.ACCEL * delta)
+		var cop_spd := Tuning.SWAT_SPEED if is_swat[i] == 1 else Tuning.COP_SPEED
+		vel[i] = vel[i].move_toward((goal - pos[i]).normalized() * cop_spd, Tuning.ACCEL * delta)
 	else:
 		_patrol(i, delta)
 
@@ -842,8 +871,9 @@ func _patrol(i: int, delta: float) -> void:
 		facing[i] += PI * 0.5 + randf_range(-0.3, 0.3)
 	elif randf() < delta * 0.4:
 		facing[i] += randf_range(-0.9, 0.9)
+	var patrol_spd := Tuning.SWAT_SPEED if is_swat[i] == 1 else Tuning.COP_SPEED
 	vel[i] = vel[i].move_toward(
-		Vector2.RIGHT.rotated(facing[i]) * Tuning.COP_SPEED * 0.5,
+		Vector2.RIGHT.rotated(facing[i]) * patrol_spd * 0.5,
 		Tuning.ACCEL * delta
 	)
 
@@ -864,12 +894,15 @@ func _nearest(from: Vector2, floor: int, want: int, max_dist: float) -> int:
 
 
 func _spawn_cops(delta: float) -> void:
-	if suspicion < Tuning.SUSP_COP_SPAWN or cop_count >= Tuning.COP_MAX:
+	var esc_idx  := clampi(escalation_level - 1, 0, Tuning.ESC_SPAWN_MULTS.size() - 1)
+	var spawn_cd := Tuning.COP_SPAWN_INTERVAL * (Tuning.ESC_SPAWN_MULTS[esc_idx] if escalation_level > 0 else 1.0)
+	var cop_max  := Tuning.ESC_COP_MAXES[esc_idx] if escalation_level > 0 else Tuning.COP_MAX
+	if suspicion < Tuning.SUSP_COP_SPAWN or cop_count >= cop_max:
 		return
 	cop_spawn_t -= delta
 	if cop_spawn_t > 0.0:
 		return
-	cop_spawn_t = Tuning.COP_SPAWN_INTERVAL
+	cop_spawn_t = spawn_cd
 	var edge := Vector2.RIGHT.rotated(randf() * TAU) * (Tuning.WORLD_SIZE * 0.5 - 1.0)
 	for i in pos.size():
 		if state[i] == S.HEALTHY and panic[i] <= 0.0 and floor_idx[i] == 0:
@@ -879,6 +912,13 @@ func _spawn_cops(delta: float) -> void:
 			alert[i]        = 0.0
 			alert_target[i] = -1
 			cop_count       += 1
+			# SWAT при высокой эскалации
+			var spawn_as_swat := (escalation_level >= Tuning.SWAT_THRESH_LEVEL and
+				(escalation_level >= 3 or randf() < 0.5))
+			is_swat[i] = 1 if spawn_as_swat else 0
+			if is_swat[i] == 1:
+				resist[i]       = 2.0
+				infect_thresh[i] = Tuning.ARCH_THRESH[Tuning.ARCH_NORMAL] * Tuning.SWAT_GRAB_MULT
 			return
 
 

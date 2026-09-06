@@ -62,7 +62,10 @@ func _color_for(s: int, i: int) -> Color:
 		sim.S.LATENT:        return C_LATENT
 		sim.S.INFECTED:      return C_INFECTED
 		sim.S.DEAD:          return C_DEAD
-		sim.S.COP:           return C_COP
+		sim.S.COP:
+			if sim.is_swat[i] == 1:
+				return Color(0.08, 0.08, 0.08)   # чёрный — SWAT
+			return C_COP
 		sim.S.INFECTED_COP:  return C_INFECTED_COP
 		_:
 			# Звонит в полицию — оранжевый

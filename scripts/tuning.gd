@@ -166,3 +166,19 @@ const PHONE_CALL_TIME   := 4.0    # секунд до звонка
 const PHONE_COP_BONUS   := 2      # дополнительных копов при звонке
 const SUSP_PHONE_CALL   := 22.0   # подозрение от звонка
 const PHONE_PANIC_RANGE := 5.0    # видит панику в этом радиусе
+
+# --- Эскалация ---
+const ESC_THRESHOLDS  := [0.20, 0.40, 0.60]
+const ESC_SPAWN_MULTS := [1.0,  0.6,  0.35]
+const ESC_COP_MAXES   := [12,   18,   28]
+const ESC_HEADLINE_DUR := 4.0
+const ESC_HEADLINES_RU := [
+	"ВЛАСТИ: \"СИТУАЦИЯ ПОД КОНТРОЛЕМ\"",
+	"[!] ВВЕДЁН РЕЖИМ ЧРЕЗВЫЧАЙНОЙ СИТУАЦИИ [!]",
+	"[!] АРМИЯ ВХОДИТ В ГОРОД [!]",
+]
+
+# --- Спецназ ---
+const SWAT_SPEED        := 4.8
+const SWAT_GRAB_MULT    := 5.0
+const SWAT_THRESH_LEVEL := 2

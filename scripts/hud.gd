@@ -8,6 +8,9 @@ var qte_bg:    Panel     # подложка за QTE-клавишей
 var qte_label: Label     # большая клавиша (арест или захват)
 var _menu:     Control   # меню паузы
 var _mut_panel: Control  # панель выбора мутации
+var _headline_panel: Control
+var _headline_label: Label
+var _headline_timer := 0.0
 var _paused    := false
 
 
@@ -49,10 +52,12 @@ func _ready() -> void:
 
 	_build_menu()
 	_build_mut_panel()
+	_build_headline_panel()
 
 	sim.stats_changed.connect(_on_stats)
 	sim.run_finished.connect(_on_finished)
 	sim.mutation_available.connect(_on_mutation_available)
+	sim.escalation_triggered.connect(_on_escalation)
 
 
 func _build_menu() -> void:
@@ -250,6 +255,44 @@ func _on_mutation_available(options: Array) -> void:
 func _on_mutation_chosen(mid: int) -> void:
 	sim.apply_mutation(mid)
 	_mut_panel.visible = false
+
+
+func _build_headline_panel() -> void:
+	_headline_panel = Control.new()
+	_headline_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_headline_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_headline_panel.visible = false
+
+	var bg := ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.06, 0.04, 0.04, 0.88)
+	_headline_panel.add_child(bg)
+
+	_headline_label = Label.new()
+	_headline_label.set_anchors_preset(Control.PRESET_CENTER)
+	_headline_label.offset_left   = -420
+	_headline_label.offset_right  =  420
+	_headline_label.offset_top    =  -44
+	_headline_label.offset_bottom =   44
+	_headline_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_headline_label.add_theme_font_size_override("font_size", 28)
+	_headline_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.3))
+	_headline_panel.add_child(_headline_label)
+
+	$Root.add_child(_headline_panel)
+
+
+func _on_escalation(level: int, headline: String) -> void:
+	_headline_label.text = "[ГАЗЕТА]  %s" % headline
+	_headline_panel.visible = true
+	_headline_timer = Tuning.ESC_HEADLINE_DUR
+
+
+func _process(delta: float) -> void:
+	if _headline_timer > 0.0:
+		_headline_timer -= delta
+		if _headline_timer <= 0.0:
+			_headline_panel.visible = false
 
 
 func _on_finished(result: int, seconds: float) -> void:
