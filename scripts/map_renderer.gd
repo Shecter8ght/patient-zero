@@ -2,6 +2,20 @@ extends Node3D
 ## Рисует карту. Стены+крыша+пол для каждого здания (стиль Project Zomboid).
 ## Крыша скрывается только когда игрок находится внутри этого конкретного здания.
 
+const STREET_RENDERER = preload("res://scripts/street_renderer.gd")
+const CITY_BUILDINGS = preload("res://scripts/city_building_catalog.gd")
+const HOUSE_MODEL = preload("res://assets/models/buildings/building_house_a.glb")
+const BUS_MODEL = preload("res://assets/models/vehicles/evac_bus.glb")
+
+var _evac_buses: Array[Node3D] = []
+const MALL_SHELL = preload("res://assets/models/mall/mall_shell.glb")
+const MALL_FLOOR = preload("res://assets/models/mall/mall_floor.glb")
+const MALL_KIOSKS = [preload("res://assets/models/mall/mall_kiosk_food.glb"), preload("res://assets/models/mall/mall_kiosk_clothes.glb"), preload("res://assets/models/mall/mall_kiosk_electronics.glb")]
+const MALL_SHOPS = [preload("res://assets/models/mall/mall_shop_food.glb"), preload("res://assets/models/mall/mall_shop_clothes.glb"), preload("res://assets/models/mall/mall_shop_electronics.glb")]
+const MALL_ESCALATOR_UP = preload("res://assets/models/mall/mall_escalator_up.glb")
+const MALL_ESCALATOR_DOWN = preload("res://assets/models/mall/mall_escalator_down.glb")
+var _outdoor_nodes: Array[Node3D] = []
+var _ground: MeshInstance3D
 var _sim: Node3D
 var _mall_exterior: Node3D
 var _floor_nodes: Array[Node3D]
@@ -20,8 +34,18 @@ const FADE_SPEED  := 9.0   # скорость перехода
 
 func _ready() -> void:
 	_sim = get_parent()
+	_ground = _sim.get_node("Ground")
 	MapGen.generate()
+	_ground.position.y = -.05
+	var ground_mat := _ground.get_surface_override_material(0).duplicate() as StandardMaterial3D
+	ground_mat.albedo_color = Color("4b5648")
+	_ground.set_surface_override_material(0, ground_mat)
 	_render_outdoor_buildings()
+	var streets := STREET_RENDERER.new()
+	add_child(streets)
+	streets.build(MapGen.street_data)
+	for child in get_children():
+		if child is Node3D: _outdoor_nodes.append(child)
 	_mall_exterior = Node3D.new()
 	add_child(_mall_exterior)
 	_render_mall_exterior()
@@ -42,6 +66,9 @@ func _process(delta: float) -> void:
 	var pfl: int     = _sim.p_floor
 	var p:   Vector2 = _sim.p_pos
 
+	_ground.visible = pfl == 0 or pfl > Tuning.MALL_FLOORS
+	for node in _outdoor_nodes:
+		node.visible = pfl == 0 or pfl > Tuning.MALL_FLOORS
 	_mall_exterior.visible = (pfl == 0)
 	for fl in Tuning.MALL_FLOORS:
 		_floor_nodes[fl].visible = (pfl == fl + 1)
@@ -85,11 +112,22 @@ func _process(delta: float) -> void:
 	var active_evac: Array = _sim.evac_points
 	for mi_idx in _evac_meshes.size():
 		_evac_meshes[mi_idx].visible = false
+		_evac_buses[mi_idx].visible = false
 	for ep_idx in active_evac.size():
 		if ep_idx >= _evac_meshes.size():
 			_evac_meshes.append(_make_evac_mesh())
+			var bus := BUS_MODEL.instantiate() as Node3D
+			bus.name = "EvacBus%d" % ep_idx
+			add_child(bus)
+			_evac_buses.append(bus)
 		var mi: MeshInstance3D = _evac_meshes[ep_idx]
 		var ep: Dictionary     = active_evac[ep_idx]
+		var bus: Node3D = _evac_buses[ep_idx]
+		bus.visible = (pfl == 0)
+		var boarding := bus.find_child("BoardingPoint", true, false) as Node3D
+		var inward := -Vector3(ep["pos"].x, 0, ep["pos"].y).normalized()
+		bus.rotation.y = atan2(-inward.z, inward.x)
+		bus.position = Vector3(ep["pos"].x, 0, ep["pos"].y) - bus.basis * boarding.position
 		mi.visible  = (pfl == 0)
 		mi.position = Vector3(ep["pos"].x, 0.15, ep["pos"].y)
 		var pulse := 0.7 + 0.3 * sin(Time.get_ticks_msec() * 0.003)
@@ -104,7 +142,55 @@ func _render_outdoor_buildings() -> void:
 	for entry in MapGen.building_data:
 		if entry["is_mall"]:
 			continue
-		_render_building(entry)
+		if is_equal_approx(float(entry["height"]), Tuning.FLOOR_HEIGHT):
+			_render_house(entry)
+		elif not _render_city_building(entry):
+			_render_building(entry)
+
+
+func _render_city_building(entry: Dictionary) -> bool:
+	var fid: int = entry["floor_id"]
+	if not CITY_BUILDINGS.ENTRIES.has(fid):
+		return false
+	var asset: Dictionary = CITY_BUILDINGS.ENTRIES[fid]
+	var r: Rect2 = entry["rect"]
+	# A changed map keeps its correct geometry until its exports are rebuilt.
+	if not asset["size"].is_equal_approx(Vector3(r.size.x, entry["height"], r.size.y)):
+		return false
+	var model := (asset["model"] as PackedScene).instantiate() as Node3D
+	model.name = "CityBuilding%d" % fid
+	add_child(model)
+	model.position = Vector3(r.get_center().x, 0, r.get_center().y)
+	var walls := model.find_child("Walls", true, false) as MeshInstance3D
+	var roof := model.find_child("Roof", true, false) as MeshInstance3D
+	var wall_mat := walls.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
+	var roof_mat := roof.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
+	walls.set_surface_override_material(0, wall_mat)
+	roof.set_surface_override_material(0, roof_mat)
+	_bldg_floor_ids.append(fid)
+	_bldg_wall_mats.append(wall_mat)
+	_bldg_roof_mats.append(roof_mat)
+	_bldg_rects.append(r)
+	return true
+
+
+func _render_house(entry: Dictionary) -> void:
+	var r: Rect2 = entry["rect"]
+	var house := HOUSE_MODEL.instantiate() as Node3D
+	house.name = "House%d" % int(entry["floor_id"])
+	add_child(house)
+	house.position = Vector3(r.get_center().x, 0, r.get_center().y)
+	house.scale = Vector3(r.size.x / 9.0, 1.0, r.size.y / 7.5)
+	var walls := house.find_child("Walls", true, false) as MeshInstance3D
+	var roof := house.find_child("Roof", true, false) as MeshInstance3D
+	var wall_mat := walls.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
+	var roof_mat := roof.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
+	walls.set_surface_override_material(0, wall_mat)
+	roof.set_surface_override_material(0, roof_mat)
+	_bldg_floor_ids.append(entry["floor_id"])
+	_bldg_wall_mats.append(wall_mat)
+	_bldg_roof_mats.append(roof_mat)
+	_bldg_rects.append(r)
 
 
 func _render_building(entry: Dictionary) -> void:
@@ -199,125 +285,67 @@ func _add_box(pos3: Vector3, size3: Vector3, mat: StandardMaterial3D) -> void:
 
 # ---------------------------------------------------------------- ТЦ снаружи
 func _render_mall_exterior() -> void:
-	var total_h := Tuning.MALL_FLOORS * Tuning.FLOOR_HEIGHT
-	var r       := MapGen.mall_rect
-
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color      = Color(0.50, 0.72, 0.90, 0.55)
-	mat.transparency      = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.roughness         = 0.25
-	mat.metallic          = 0.15
-	mat.metallic_specular = 0.9
-
-	var mi  := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size     = Vector3(r.size.x, total_h, r.size.y)
-	box.material = mat
-	mi.mesh      = box
-	mi.position  = Vector3(r.position.x + r.size.x * 0.5, total_h * 0.5, r.position.y + r.size.y * 0.5)
-	_mall_exterior.add_child(mi)
-
-	var roof_mat := StandardMaterial3D.new()
-	roof_mat.albedo_color = Color(0.35, 0.48, 0.62)
-	roof_mat.roughness    = 0.7
-	var roof_mi  := MeshInstance3D.new()
-	var roof_box := BoxMesh.new()
-	roof_box.size     = Vector3(r.size.x, 0.3, r.size.y)
-	roof_box.material = roof_mat
-	roof_mi.mesh      = roof_box
-	roof_mi.position  = Vector3(r.position.x + r.size.x * 0.5, total_h + 0.15, r.position.y + r.size.y * 0.5)
-	_mall_exterior.add_child(roof_mi)
+	var shell := MALL_SHELL.instantiate() as Node3D
+	shell.name = "MallShell"
+	_mall_exterior.add_child(shell)
 
 
-# ---------------------------------------------------------------- ТЦ изнутри
 func _render_mall_floors() -> void:
-	var mi_rect := MapGen.mall_interior
-
 	for fl in Tuning.MALL_FLOORS:
 		var fn: Node3D = _floor_nodes[fl]
-		var slab_y     := fl * Tuning.FLOOR_HEIGHT + 0.15
-
-		var slab_mat := StandardMaterial3D.new()
-		slab_mat.albedo_color = Color(0.20, 0.21, 0.23)
-		slab_mat.roughness    = 0.75
-		var slab_mi  := MeshInstance3D.new()
-		var slab_box := BoxMesh.new()
-		slab_box.size     = Vector3(mi_rect.size.x, 0.25, mi_rect.size.y)
-		slab_box.material = slab_mat
-		slab_mi.mesh      = slab_box
-		slab_mi.position  = Vector3(mi_rect.position.x + mi_rect.size.x * 0.5, slab_y,
-				mi_rect.position.y + mi_rect.size.y * 0.5)
-		fn.add_child(slab_mi)
-
-		# Прозрачные боковые стены
-		var wall_h   := Tuning.FLOOR_HEIGHT - 0.25
-		var wall_y   := slab_y + 0.125 + wall_h * 0.5
-		var wt       := 0.4
-		var rx       := mi_rect.position.x
-		var ry       := mi_rect.position.y
-		var rw       := mi_rect.size.x
-		var rd       := mi_rect.size.y
-		var wall_mat := StandardMaterial3D.new()
-		wall_mat.albedo_color = Color(0.58, 0.75, 0.92, 0.35)
-		wall_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		wall_mat.roughness    = 0.2
-
-		for w in [
-			[Vector3(rx + rw * 0.5, wall_y, ry),            Vector3(rw, wall_h, wt)],
-			[Vector3(rx + rw * 0.5, wall_y, ry + rd),       Vector3(rw, wall_h, wt)],
-			[Vector3(rx,            wall_y, ry + rd * 0.5), Vector3(wt, wall_h, rd)],
-			[Vector3(rx + rw,       wall_y, ry + rd * 0.5), Vector3(wt, wall_h, rd)],
-		]:
-			var wmi  := MeshInstance3D.new()
-			var wbox := BoxMesh.new()
-			wbox.size     = w[1]
-			wbox.material = wall_mat
-			wmi.mesh      = wbox
-			wmi.position  = w[0]
-			fn.add_child(wmi)
-
-		# Магазины
-		var hue      := fmod(float(fl) * 0.19 + 0.07, 1.0)
-		var shop_mat := StandardMaterial3D.new()
-		shop_mat.albedo_color = Color.from_hsv(hue, 0.5, 0.58)
-		shop_mat.roughness    = 0.8
-
-		if fl < MapGen.mall_obstacles.size():
-			for shop: Rect2 in MapGen.mall_obstacles[fl]:
-				var sh  := 2.0
-				var smi := MeshInstance3D.new()
-				var sbx := BoxMesh.new()
-				sbx.size      = Vector3(shop.size.x, sh, shop.size.y)
-				sbx.material  = shop_mat
-				smi.mesh      = sbx
-				smi.position  = Vector3(shop.position.x + shop.size.x * 0.5, slab_y + 0.125 + sh * 0.5,
-						shop.position.y + shop.size.y * 0.5)
-				fn.add_child(smi)
+		fn.name = "MallFloor%d" % (fl + 1)
+		fn.position.y = MapGen.floor_y3d(fl + 1)
+		var floor_model := MALL_FLOOR.instantiate() as Node3D
+		fn.add_child(floor_model)
+		for data: Dictionary in MapGen.mall_kiosks[fl]:
+			var kiosk := (MALL_KIOSKS[data["kind"]] as PackedScene).instantiate() as Node3D
+			fn.add_child(kiosk)
+			var center: Vector2 = data["rect"].get_center()
+			kiosk.position = Vector3(center.x, 0, center.y)
+		for data: Dictionary in MapGen.mall_shops[fl]:
+			var shop := (MALL_SHOPS[data["kind"]] as PackedScene).instantiate() as Node3D
+			fn.add_child(shop)
+			shop.position = Vector3(data["center"].x, 0, data["center"].y)
+			shop.rotation.y = data["angle"]
+			var title: String = ["ПРОДУКТЫ", "ОДЕЖДА", "ТЕХНИКА"][data["kind"]]
+			_mall_label(shop, title, Vector3(0, 2.8, -2.6), Color.WHITE, 0.007)
+		_mall_label(fn, "ЭТАЖ %d" % (fl + 1), Vector3(0, 0.12, -15), Color("2b5559"), 0.025)
+		if fl == 0:
+			_mall_label(fn, "ВЫХОД ↓", Vector3(0, 0.15, MapGen.mall_exit.end.y + 1.0), Color("235741"), 0.016)
 
 
-# ---------------------------------------------------------------- маркеры переходов
+func _mall_label(parent: Node3D, title: String, position3: Vector3, color: Color, pixel_size: float) -> void:
+	var label := Label3D.new()
+	label.text = title
+	label.position = position3
+	label.font_size = 48
+	label.pixel_size = pixel_size
+	label.modulate = color
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = false
+	parent.add_child(label)
+
+
 func _render_transition_markers() -> void:
-	var ew := Tuning.MALL_ENTRANCE_W * 0.5
-	_add_marker(self, Rect2(-ew, -14.5, ew * 2, 3.0), 0.12, Color(0.10, 0.85, 0.35))
-
+	var exterior := Node3D.new()
+	add_child(exterior)
+	_outdoor_nodes.append(exterior)
+	_add_marker(exterior, MapGen.mall_entry, 0.02, Color(0.10, 0.70, 0.35))
 	for fl in range(1, Tuning.MALL_FLOORS):
-		var fn: Node3D = _floor_nodes[fl - 1]
-		var base_y := fl * Tuning.FLOOR_HEIGHT
-		_add_marker(fn, Rect2(7.0, 7.0, 4.0, 4.0),   base_y + 0.12, Color(0.20, 0.60, 1.00))
-		_add_marker(fn, Rect2(-11.0, 7.0, 4.0, 4.0), base_y + 0.12, Color(1.00, 0.55, 0.15))
-
-	if _floor_nodes.size() > 0:
-		_add_marker(_floor_nodes[0], Rect2(-ew, -11.5, ew * 2, 1.5),
-			Tuning.FLOOR_HEIGHT * 0.0 + 0.12, Color(0.10, 0.85, 0.35))
-
-	# Дверные маркеры на улице
+		var up := MALL_ESCALATOR_UP.instantiate() as Node3D
+		_floor_nodes[fl - 1].add_child(up)
+		up.position = Vector3(MapGen.mall_up.get_center().x, 0, MapGen.mall_up.get_center().y)
+		_mall_label(up, "↑ %d ЭТАЖ" % (fl + 1), Vector3(0, 1.65, 0), Color("8fc9ef"), 0.011)
+		var down := MALL_ESCALATOR_DOWN.instantiate() as Node3D
+		_floor_nodes[fl].add_child(down)
+		down.position = Vector3(MapGen.mall_down.get_center().x, 0, MapGen.mall_down.get_center().y)
+		_mall_label(down, "↓ %d ЭТАЖ" % fl, Vector3(0, 1.65, 0), Color("edbb84"), 0.011)
+	_add_marker(_floor_nodes[0], MapGen.mall_exit, 0.015, Color(0.10, 0.70, 0.35))
 	for entry in MapGen.building_data:
-		if not entry["has_interior"]:
-			continue
+		if not entry["has_interior"]: continue
 		var dp: Vector2 = entry["door_pos"]
 		var bew := Tuning.BUILDING_DOOR_W * 0.5
-		_add_marker(self, Rect2(dp.x - bew, dp.y - 0.3, bew * 2, 0.5), 0.05,
-			Color(0.15, 0.90, 0.40))
+		_add_marker(exterior, Rect2(dp.x - bew, dp.y - 0.3, bew * 2, 0.5), 0.05, Color(0.15, 0.90, 0.40))
 
 
 func _make_evac_mesh() -> MeshInstance3D:

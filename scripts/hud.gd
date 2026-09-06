@@ -23,13 +23,13 @@ func _ready() -> void:
 	bar   = $Root/Suspicion
 	label = $Root/Status
 
-	# Подложка QTE
+	# Подложка QTE — низ по центру
 	qte_bg = Panel.new()
-	qte_bg.set_anchors_preset(Control.PRESET_CENTER)
+	qte_bg.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	qte_bg.offset_left   = -60
 	qte_bg.offset_right  =  60
-	qte_bg.offset_top    = -55
-	qte_bg.offset_bottom =  55
+	qte_bg.offset_top    = -130
+	qte_bg.offset_bottom = -20
 	qte_bg.visible = false
 	var bg_style := StyleBoxFlat.new()
 	bg_style.bg_color = Color(0.05, 0.05, 0.08, 0.82)
@@ -46,11 +46,11 @@ func _ready() -> void:
 	qte_label.add_theme_color_override("font_color", Color(1.0, 0.18, 0.18))
 	qte_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	qte_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	qte_label.set_anchors_preset(Control.PRESET_CENTER)
+	qte_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	qte_label.offset_left   = -60
 	qte_label.offset_right  =  60
-	qte_label.offset_top    = -55
-	qte_label.offset_bottom =  55
+	qte_label.offset_top    = -130
+	qte_label.offset_bottom = -20
 	qte_label.visible = false
 	$Root.add_child(qte_label)
 
@@ -153,7 +153,12 @@ func _on_stats(healthy: int, infected: int, latent: int, dead: int,
 		var evac_warn := "(!)" if evac_count > Tuning.EVAC_LOSE_AT * 0.6 else ""
 		var horde_str := ""
 		if sim.horde_target_life > 0.0:
-			horde_str = "\n> ОРДА — цель (%.0f сек)" % sim.horde_target_life
+			var ta: int = sim.horde_target_agent
+			if ta >= 0 and (sim.state[ta] == sim.S.COP or sim.state[ta] == sim.S.HEALTHY):
+				var label_ta := "КОП" if sim.state[ta] == sim.S.COP else "ЦЕЛЬ"
+				horde_str = "\n> ОРДА → %s (%.0f сек)" % [label_ta, sim.horde_target_life]
+			else:
+				horde_str = "\n> ОРДА — позиция (%.0f сек)" % sim.horde_target_life
 		label.text = (
 			"Заражено: %d%%   Здоровых: %d   Инкуб: %d\n" +
 			"Мертвых: %d   Полиции: %d   Подозрение: %d\n" +
@@ -212,7 +217,9 @@ func _build_mut_panel() -> void:
 
 func _on_mutation_available(options: Array) -> void:
 	while _mut_panel.get_child_count() > 3:
-		_mut_panel.get_child(_mut_panel.get_child_count() - 1).queue_free()
+		var old := _mut_panel.get_child(_mut_panel.get_child_count() - 1)
+		_mut_panel.remove_child(old)
+		old.queue_free()
 
 	var card_w := 280
 	var card_h := 180

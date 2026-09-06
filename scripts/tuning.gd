@@ -93,10 +93,12 @@ const MAP_PLAZA_FREQ := 7
 
 # --- Этажи и ТЦ ---
 const FLOOR_HEIGHT    := 3.5    # высота одного этажа (м)
-const MALL_SIZE       := 24.0   # размер ТЦ по каждой оси
+const MALL_SIZE       := 48.0   # размер ТЦ по каждой оси
 const MALL_FLOORS     := 4
+const MALL_CLEARANCE  := 3.0    # свободный проход вокруг ТЦ
+const MALL_AGENTS_PER_FLOOR := 50
 const MALL_WALL_T     := 1.0    # толщина наружной стены ТЦ
-const MALL_ENTRANCE_W := 4.0    # ширина входа (юг)
+const MALL_ENTRANCE_W := 6.0    # ширина входа (юг)
 const FLOOR_CD        := 1.2    # кулдаун смены этажа (сек), чтоб не прыгали туда-обратно
 const BUILDING_DOOR_W := 2.0    # ширина дверного проёма в обычных зданиях
 const BUILDING_WALL_T := 0.5    # толщина стены здания
@@ -119,6 +121,7 @@ const JOURNALIST_PHOTO_TIME := 3.0   # сек до срабатывания фо
 const SUSP_JOURNALIST       := 28.0  # подозрение от фото
 
 # --- Эвакуация ---
+const EVAC_SPOTS := [Vector2(0,-62),Vector2(62,0),Vector2(0,62),Vector2(-62,0)]
 const EVAC_FIRST_TIME  := 60.0   # сек до первой точки эвакуации
 const EVAC_INTERVAL    := 40.0   # сек между появлением новых точек
 const EVAC_RADIUS      := 2.5    # радиус посадки в автобус
@@ -182,3 +185,8 @@ const ESC_HEADLINES_RU := [
 const SWAT_SPEED        := 4.8
 const SWAT_GRAB_MULT    := 5.0
 const SWAT_THRESH_LEVEL := 2
+
+# --- Visual animation (seconds and m/s; does not change simulation balance) ---
+const ANIM_BLEND_TIME := 0.12
+const ANIM_RUN_THRESHOLD := 2.5
+const ANIM_ZOMBIE_RUN_THRESHOLD := 3.7

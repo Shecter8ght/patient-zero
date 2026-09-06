@@ -54,10 +54,10 @@ var _grab_wrong_count := 0
 # --- Бросок ---
 var _throw_cd := 0.0
 
-const _QTE_KEYS := [
-	["E", KEY_E], ["F", KEY_F], ["Q", KEY_Q], ["G", KEY_G],
-	["Z", KEY_Z], ["X", KEY_X], ["C", KEY_C], ["V", KEY_V],
-]
+const _QTE_ALL  := [["Q",KEY_Q],["W",KEY_W],["E",KEY_E],["A",KEY_A],["S",KEY_S],["D",KEY_D]]
+const _QTE_CIV  := [["Q",KEY_Q],["E",KEY_E],["A",KEY_A]]
+const _QTE_COP  := [["Q",KEY_Q],["W",KEY_W],["E",KEY_E],["A",KEY_A],["S",KEY_S]]
+const _QTE_SWAT := [["Q",KEY_Q],["W",KEY_W],["E",KEY_E],["A",KEY_A],["S",KEY_S],["D",KEY_D]]
 
 # --- Состояние забега ---
 var suspicion     := 0.0
@@ -71,8 +71,9 @@ var evac_count  := 0
 var evac_points: Array[Dictionary] = []
 
 # --- Орда ---
-var horde_target      := Vector2.ZERO
-var horde_target_life := 0.0
+var horde_target       := Vector2.ZERO
+var horde_target_life  := 0.0
+var horde_target_agent := -1   # индекс агента-цели или -1 (позиционная цель)
 
 # --- Мутации ---
 var active_mutations: Array[int] = []
@@ -133,12 +134,17 @@ func reset_run() -> void:
 
 	# -------- распределение агентов --------
 	# 200 — в ТЦ равномерно по этажам, 300 — на улице
-	var mall_per_floor := 50
+	var mall_per_floor := Tuning.MALL_AGENTS_PER_FLOOR
 	var mall_total := mall_per_floor * Tuning.MALL_FLOORS   # 200
 	var out_total  := n - mall_total                         # 300
 
 	var out_pts: Array = Array(MapGen.spawn_points)
 	out_pts.shuffle()
+	var mall_spawn_sets: Array = []
+	for points in MapGen.mall_spawns:
+		var shuffled: Array = Array(points)
+		shuffled.shuffle()
+		mall_spawn_sets.append(shuffled)
 
 	for i in n:
 		var fl    := 0
@@ -146,11 +152,11 @@ func reset_run() -> void:
 
 		if i < mall_total:
 			fl = (i / mall_per_floor) + 1   # этажи 1..MALL_FLOORS
-			var mall_pts: PackedVector2Array = MapGen.mall_spawns[fl - 1]
+			var mall_pts: Array = mall_spawn_sets[fl - 1]
 			if mall_pts.size() > 0:
-				pt = mall_pts[i % mall_pts.size()]
+				pt = mall_pts[(i % mall_per_floor) % mall_pts.size()]
 			else:
-				pt = Vector2(randf_range(-9, 9), randf_range(-9, 9))
+				pt = MapGen.mall_interior.get_center()
 		else:
 			var oi := (i - mall_total) % out_pts.size()
 			pt = out_pts[oi] if out_pts.size() > 0 else Vector2.ZERO
@@ -223,8 +229,9 @@ func reset_run() -> void:
 	cop_count        = 0
 	cop_spawn_t      = 0.0
 	finished         = 0
-	horde_target      = Vector2.ZERO
-	horde_target_life = 0.0
+	horde_target       = Vector2.ZERO
+	horde_target_life  = 0.0
+	horde_target_agent = -1
 	evac_timer        = Tuning.EVAC_FIRST_TIME
 	evac_count        = 0
 	evac_points.clear()
@@ -301,7 +308,7 @@ func _handle_arrest(delta: float) -> void:
 	_qte_timer -= delta
 	if _qte_timer <= 0.0:
 		_qte_timer = Tuning.QTE_INTERVAL
-		var pick: Array = _QTE_KEYS[randi() % _QTE_KEYS.size()]
+		var pick: Array = _QTE_ALL[randi() % _QTE_ALL.size()]
 		p_qte_key_str = pick[0]
 		p_qte_key     = pick[1]
 
@@ -414,7 +421,8 @@ func _update_player(delta: float) -> void:
 							_break_grab(true)
 					if p_grab >= 0:
 						_grab_qte_timer = Tuning.GRAB_QTE_INTERVAL
-						var pick: Array = _QTE_KEYS[randi() % _QTE_KEYS.size()]
+						var pool: Array = _qte_pool()
+						var pick: Array = pool[randi() % pool.size()]
 						_grab_qte_str = pick[0]
 						_grab_qte_key = pick[1]
 
@@ -441,6 +449,12 @@ func _clear_grab_qte() -> void:
 	_grab_qte_str     = ""
 	_grab_qte_timer   = 0.0
 	_grab_wrong_count = 0
+
+func _qte_pool() -> Array:
+	if p_grab < 0: return _QTE_CIV
+	if is_swat[p_grab] == 1: return _QTE_SWAT
+	if state[p_grab] == S.COP: return _QTE_COP
+	return _QTE_CIV
 
 
 func _try_auto_grab() -> void:
@@ -502,6 +516,9 @@ func _offer_mutations() -> void:
 	for mid in Tuning.MUT_NAMES.size():
 		if mid not in active_mutations:
 			available.append(mid)
+	if available.is_empty():
+		_pending_mutation = false
+		return
 	available.shuffle()
 	var options := available.slice(0, min(3, available.size()))
 	mutation_available.emit(options)
@@ -645,9 +662,17 @@ func _tick_infected(i: int, delta: float) -> void:
 				grab_prog[i]   = 0.0
 			return
 
-	# Команда орды — двигаемся к цели (только на улице)
-	if horde_target_life > 0.0 and floor_idx[i] == 0:
-		var to_target := horde_target - pos[i]
+	# Команда орды — двигаемся к цели
+	if horde_target_life > 0.0:
+		# Агент-цель: берём его текущую позицию; если уже заражён — снимаем метку
+		var move_to := horde_target
+		if horde_target_agent >= 0:
+			var ta := horde_target_agent
+			if state[ta] == S.HEALTHY or state[ta] == S.COP:
+				move_to = pos[ta]
+			else:
+				horde_target_agent = -1  # цель поймана — орда держит последнюю позицию
+		var to_target := move_to - pos[i]
 		var dist_t    := to_target.length()
 		if dist_t > Tuning.HORDE_ARRIVE_DIST:
 			vel[i] = vel[i].lerp(to_target.normalized() * speed, 0.12)
@@ -963,13 +988,8 @@ func _tick_evac(delta: float) -> void:
 		return
 	evac_timer = Tuning.EVAC_INTERVAL
 
-	const EVAC_SPOTS: Array = [
-		Vector2(0.0,  -62.0),
-		Vector2(62.0,   0.0),
-		Vector2(0.0,   62.0),
-		Vector2(-62.0,  0.0),
-	]
-	for spot in EVAC_SPOTS:
+
+	for spot in Tuning.EVAC_SPOTS:
 		var taken := false
 		for ep in evac_points:
 			if (ep["pos"] as Vector2).distance_squared_to(spot) < 4.0:
@@ -1057,7 +1077,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var ke := event as InputEventKey
 		if ke.pressed and not ke.echo and _grab_qte_key != KEY_NONE:
 			var is_qte_key := false
-			for kp in _QTE_KEYS:
+			for kp in _QTE_ALL:
 				if ke.keycode == kp[1]:
 					is_qte_key = true
 					break
@@ -1093,10 +1113,24 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and not p_being_arrested:
-			var target := _mouse_world_pos()
-			horde_target      = target
-			horde_target_life = Tuning.HORDE_CMD_DURATION
-			horde_commanded.emit(target)
+			var click_pos := _mouse_world_pos()
+			# Ищем агента (здоровый или коп) рядом с кликом
+			var pick_r2   := 3.5 * 3.5
+			var best      := -1
+			var best_d    := pick_r2
+			for nb in _neighbors(click_pos, p_floor):
+				if state[nb] != S.HEALTHY and state[nb] != S.COP:
+					continue
+				if floor_idx[nb] != p_floor:
+					continue
+				var d2 := pos[nb].distance_squared_to(click_pos)
+				if d2 < best_d:
+					best_d = d2
+					best   = nb
+			horde_target_agent = best
+			horde_target       = click_pos if best < 0 else pos[best]
+			horde_target_life  = Tuning.HORDE_CMD_DURATION
+			horde_commanded.emit(horde_target)
 			get_viewport().set_input_as_handled()
 			return
 

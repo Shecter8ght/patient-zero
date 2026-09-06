@@ -4,10 +4,18 @@ extends Node
 
 # --- Уличные препятствия (floor 0) ---
 var buildings: Array[Rect2] = []
+var street_data: Dictionary = {}
+const STREET_LAYOUT = preload("res://scripts/street_layout.gd")
 
 # --- ТЦ ---
-var mall_rect     := Rect2(-12, -12, 24, 24)
-var mall_interior := Rect2(-11, -11, 22, 22)
+var mall_rect := Rect2(Vector2.ONE * (-Tuning.MALL_SIZE * 0.5), Vector2.ONE * Tuning.MALL_SIZE)
+var mall_interior := mall_rect.grow(-Tuning.MALL_WALL_T)
+var mall_kiosks: Array = []
+var mall_shops: Array = []
+var mall_up := Rect2(3, Tuning.MALL_SIZE * 0.5 - 8, 4, 4)
+var mall_down := Rect2(-7, Tuning.MALL_SIZE * 0.5 - 8, 4, 4)
+var mall_entry := Rect2(-Tuning.MALL_ENTRANCE_W / 2, -Tuning.MALL_SIZE / 2 - 1.5, Tuning.MALL_ENTRANCE_W, 2.0)
+var mall_exit := Rect2(-Tuning.MALL_ENTRANCE_W / 2, -Tuning.MALL_SIZE / 2 + Tuning.MALL_WALL_T, Tuning.MALL_ENTRANCE_W, 1.5)
 var mall_obstacles: Array = []   # Array[Array[Rect2]], индекс = floor-1
 
 # --- Переходы между этажами ---
@@ -28,7 +36,7 @@ var building_data: Array = []
 var _generated     := false
 var _building_count := 0
 
-const _MALL_ZONE := Rect2(-14, -14, 28, 28)
+var _mall_zone := mall_rect.grow(Tuning.MALL_CLEARANCE)
 
 
 func generate() -> void:
@@ -38,54 +46,40 @@ func generate() -> void:
 	_place_mall()
 	_place_outdoor_buildings()
 	_build_transitions()
+	street_data = STREET_LAYOUT.new().build(self)
 	_build_spawn_points()
 	_build_mall_spawns()
 
 
 # ----------------------------------------------------------------- ТЦ
 func _place_mall() -> void:
-	var ew := Tuning.MALL_ENTRANCE_W * 0.5
-	var wt := Tuning.MALL_WALL_T
-
-	buildings.append(Rect2(-12,  11, 24,  wt))
-	buildings.append(Rect2( 11, -12,  wt, 24))
-	buildings.append(Rect2(-12, -12,  wt, 24))
-	buildings.append(Rect2(-12, -12, 12 - ew, wt))
-	buildings.append(Rect2(ew,  -12, 12 - ew, wt))
-
+	# Full outdoor footprint prevents street agents spawning inside the shell.
+	buildings.append(mall_rect)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = Tuning.MAP_SEED + 9999
 	mall_obstacles.resize(Tuning.MALL_FLOORS)
-
-	var protected: Array[Rect2] = [
-		Rect2( 6,  6, 5, 5),
-		Rect2(-11,  6, 5, 5),
-		Rect2(-3, -11, 6, 5),
-	]
-
+	mall_kiosks.resize(Tuning.MALL_FLOORS)
+	mall_shops.resize(Tuning.MALL_FLOORS)
 	for fl in Tuning.MALL_FLOORS:
 		var obs: Array[Rect2] = []
-		var attempts := 0
-		while obs.size() < 5 and attempts < 80:
-			attempts += 1
-			var sx := rng.randf_range(-9, 4)
-			var sy := rng.randf_range(-9, 4)
-			var sw := rng.randf_range(2.5, 4.5)
-			var sd := rng.randf_range(2.0, 3.5)
-			var shop := Rect2(sx, sy, sw, sd)
-			var ok := true
-			for p: Rect2 in protected:
-				if shop.grow(1.2).intersects(p):
-					ok = false
-					break
-			if ok:
-				for ex: Rect2 in obs:
-					if shop.grow(0.6).intersects(ex):
-						ok = false
-						break
-			if ok:
-				obs.append(shop)
+		var kiosks: Array = []
+		var shops: Array = []
+		# Central cross and rear gallery remain open between all transitions.
+		for x in [-10.0, 10.0]:
+			for z in [-13.0, -6.0, 6.0, 13.0]:
+				var rect := Rect2(Vector2(x, z) - Vector2(1.75, 1.375), Vector2(3.5, 2.75))
+				obs.append(rect)
+				kiosks.append({"rect": rect, "kind": rng.randi_range(0, 2)})
+		for side in [-1.0, 1.0]:
+			for z in [-15.0, -5.0, 5.0, 15.0]:
+				var center := Vector2(side * (Tuning.MALL_SIZE * 0.5 - 4.0), z)
+				var angle: float = -side * PI / 2.0
+				shops.append({"center": center, "angle": angle, "kind": (fl + shops.size()) % 3})
+				for local_rect in [Rect2(-4, -3, 8, 0.6), Rect2(-4, -2.4, 0.4, 5.4), Rect2(3.6, -2.4, 0.4, 5.4), Rect2(-3.2, 1.5, 2.5, 0.7)]:
+					obs.append(_rotated_shop_rect(local_rect, center, angle))
 		mall_obstacles[fl] = obs
+		mall_kiosks[fl] = kiosks
+		mall_shops[fl] = shops
 
 	building_data.append({
 		"rect":         mall_rect,
@@ -100,6 +94,12 @@ func _place_mall() -> void:
 
 
 # ----------------------------------------------------------------- Уличные здания
+func _rotated_shop_rect(rect: Rect2, center: Vector2, angle: float) -> Rect2:
+	var a := rect.position.rotated(-angle) + center
+	var b := rect.end.rotated(-angle) + center
+	return Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)), Vector2(absf(a.x-b.x), absf(a.y-b.y)))
+
+
 func _place_outdoor_buildings() -> void:
 	var bs  := Tuning.MAP_BLOCK_SIZE
 	var sw  := Tuning.MAP_STREET_W
@@ -117,7 +117,7 @@ func _place_outdoor_buildings() -> void:
 			var by    := oy + row * (bs + sw)
 			var block := Rect2(bx, by, bs, bs)
 
-			if block.intersects(_MALL_ZONE):
+			if block.intersects(_mall_zone):
 				continue
 			if rng.randi_range(0, Tuning.MAP_PLAZA_FREQ - 1) == 0:
 				continue
@@ -188,32 +188,15 @@ func _place_outdoor_buildings() -> void:
 
 # ----------------------------------------------------------------- Переходы
 func _build_transitions() -> void:
-	var ew := Tuning.MALL_ENTRANCE_W * 0.5
-
-	# ТЦ: вход/выход
-	transitions.append({
-		"rect":       Rect2(-ew, -14.5, ew * 2, 3.0),
-		"from_floor": 0, "to_floor": 1,
-		"dest":       Vector2(0.0, -8.0)
-	})
-	transitions.append({
-		"rect":       Rect2(-ew, -11.5, ew * 2, 1.5),
-		"from_floor": 1, "to_floor": 0,
-		"dest":       Vector2(0.0, -15.0)
-	})
-
-	# ТЦ: эскалаторы
+	transitions.append({"rect": mall_entry, "from_floor": 0, "to_floor": 1,
+		"dest": Vector2(0, mall_interior.position.y + 3.0)})
+	transitions.append({"rect": mall_exit, "from_floor": 1, "to_floor": 0,
+		"dest": Vector2(0, mall_rect.position.y - 2.5)})
 	for fl in range(1, Tuning.MALL_FLOORS):
-		transitions.append({
-			"rect":       Rect2(7.0, 7.0, 4.0, 4.0),
-			"from_floor": fl, "to_floor": fl + 1,
-			"dest":       Vector2(7.5, 5.5)
-		})
-		transitions.append({
-			"rect":       Rect2(-11.0, 7.0, 4.0, 4.0),
-			"from_floor": fl + 1, "to_floor": fl,
-			"dest":       Vector2(-9.5, 5.5)
-		})
+		transitions.append({"rect": mall_up, "from_floor": fl, "to_floor": fl + 1,
+			"dest": Vector2(mall_down.get_center().x, mall_down.position.y - 1.0)})
+		transitions.append({"rect": mall_down, "from_floor": fl + 1, "to_floor": fl,
+			"dest": Vector2(mall_up.get_center().x, mall_up.position.y - 1.0)})
 
 	# Обычные здания: вход/выход через южную стену
 	var bew := Tuning.BUILDING_DOOR_W * 0.5
@@ -330,9 +313,9 @@ func _push_rect(p: Vector2, b: Rect2, radius: float) -> Vector2:
 	var px := hw - absf(dx)
 	var py := hh - absf(dy)
 	if px < py:
-		p.x += px * signf(dx)
+		p.x += px * (1.0 if dx >= 0.0 else -1.0)
 	else:
-		p.y += py * signf(dy)
+		p.y += py * (1.0 if dy >= 0.0 else -1.0)
 	return p
 
 
@@ -347,6 +330,6 @@ func floor_y3d(floor_id: int) -> float:
 	if floor_id == 0:
 		return 0.0
 	elif floor_id <= Tuning.MALL_FLOORS:
-		return float(floor_id) * Tuning.FLOOR_HEIGHT
+		return float(floor_id - 1) * Tuning.FLOOR_HEIGHT
 	else:
 		return 0.0   # обычное здание — на уровне земли
