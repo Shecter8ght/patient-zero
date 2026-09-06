@@ -24,6 +24,8 @@ var health:       PackedByteArray     # здоровье: AGENT_HEALTH выст�
 var archetype:    PackedByteArray     # ARCH_* константы Tuning
 var infect_thresh: PackedFloat32Array # порог p_prog для заражения по архетипу
 var photo_timer:  PackedFloat32Array  # > 0 = журналист фотографирует
+var has_phone:    PackedByteArray     # 1 = есть телефон
+var phone_timer:  PackedFloat32Array  # > 0 = звонит (обратный отсчёт)
 
 # --- Игрок ---
 var p_pos      := Vector2.ZERO
@@ -101,6 +103,7 @@ func reset_run() -> void:
 	alert.resize(n);       alert_target.resize(n); was_cop.resize(n)
 	floor_idx.resize(n);   floor_cd.resize(n);    health.resize(n)
 	archetype.resize(n);   infect_thresh.resize(n); photo_timer.resize(n)
+	has_phone.resize(n);   phone_timer.resize(n)
 
 	MapGen.generate()
 
@@ -155,6 +158,9 @@ func reset_run() -> void:
 		archetype[i]    = arch
 		infect_thresh[i] = Tuning.ARCH_THRESH[arch]
 		photo_timer[i]  = 0.0
+		var can_have_phone := (arch == Tuning.ARCH_NORMAL or arch == Tuning.ARCH_ELDER)
+		has_phone[i]   = 1 if (can_have_phone and randf() < Tuning.PHONE_FREQ) else 0
+		phone_timer[i] = 0.0
 
 	# -------- игрок появляется в переулке у края карты --------
 	var corner := Vector2(-65.0, -65.0)
@@ -433,6 +439,7 @@ func _count_helpers(v: int) -> int:
 
 
 func _infect(i: int) -> void:
+	phone_timer[i] = 0.0   # заразили — звонок отменён
 	was_cop[i] = 1 if state[i] == S.COP else 0
 	if state[i] == S.COP:
 		cop_count -= 1
@@ -697,6 +704,39 @@ func _tick_civilian(i: int, delta: float) -> void:
 		elif not near_grab:
 			photo_timer[i] = 0.0
 
+	# Телефон: звонок в полицию при виде паники
+	var calling := false
+	if has_phone[i] == 1 and state[i] == S.HEALTHY and panic[i] <= 0.0 and floor_idx[i] == 0:
+		if phone_timer[i] > 0.0:
+			calling = true
+			phone_timer[i] -= delta
+			if phone_timer[i] <= 0.0:
+				suspicion = minf(100.0, suspicion + Tuning.SUSP_PHONE_CALL)
+				var spawned := 0
+				for j in pos.size():
+					if spawned >= Tuning.PHONE_COP_BONUS:
+						break
+					if state[j] == S.HEALTHY and panic[j] <= 0.0 and floor_idx[j] == 0:
+						var edge := Vector2.RIGHT.rotated(randf() * TAU) * (Tuning.WORLD_SIZE * 0.5 - 1.0)
+						pos[j]          = edge
+						state[j]        = S.COP
+						resist[j]       = 1.2
+						alert[j]        = 0.0
+						alert_target[j] = -1
+						cop_count       += 1
+						spawned         += 1
+		else:
+			var sees_panic := false
+			var r2_phone := Tuning.PHONE_PANIC_RANGE * Tuning.PHONE_PANIC_RANGE
+			for nb in _neighbors(pos[i], floor_idx[i]):
+				if nb == i:
+					continue
+				if panic[nb] > 0.0 and pos[nb].distance_squared_to(pos[i]) < r2_phone:
+					sees_panic = true
+					break
+			if sees_panic:
+				phone_timer[i] = Tuning.PHONE_CALL_TIME
+
 	# Эвакуация: тянет здоровых без паники на улице к точке
 	var going_to_evac := false
 	if state[i] == S.HEALTHY and panic[i] <= 0.0 and floor_idx[i] == 0 and not evac_points.is_empty():
@@ -762,6 +802,8 @@ func _tick_civilian(i: int, delta: float) -> void:
 			vel[i] = vel[i].move_toward(vel[i].normalized() * panic_spd, Tuning.ACCEL * delta)
 	elif p_grab == i:
 		vel[i] = vel[i].move_toward(Vector2.ZERO, Tuning.KNOCKBACK_DECAY * delta)
+	elif calling:
+		vel[i] = vel[i].move_toward(Vector2.ZERO, Tuning.ACCEL * delta)
 	elif not going_to_evac:
 		_wander(i, delta, Tuning.CIV_WALK)
 

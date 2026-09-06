@@ -65,6 +65,9 @@ func _color_for(s: int, i: int) -> Color:
 		sim.S.COP:           return C_COP
 		sim.S.INFECTED_COP:  return C_INFECTED_COP
 		_:
+			# Звонит в полицию — оранжевый
+			if sim.has_phone[i] == 1 and sim.phone_timer[i] > 0.0:
+				return Color(1.0, 0.5, 0.0)
 			match sim.archetype[i]:
 				Tuning.ARCH_CHILD:      return Color(1.0, 0.95, 0.4)
 				Tuning.ARCH_ELDER:      return Color(0.75, 0.6, 0.45)
