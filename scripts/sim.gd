@@ -68,6 +68,10 @@ var evac_timer  := 0.0
 var evac_count  := 0
 var evac_points: Array[Dictionary] = []
 
+# --- Орда ---
+var horde_target      := Vector2.ZERO
+var horde_target_life := 0.0
+
 # --- Мутации ---
 var active_mutations: Array[int] = []
 var _next_mut_at     := Tuning.MUT_THRESHOLD
@@ -82,6 +86,7 @@ signal run_finished(result: int, seconds: float)
 signal stats_changed(healthy: int, infected: int, latent: int, dead: int, cops: int, suspicion: float, arrest_prog: float, qte_key: String, evac_count: int)
 signal shot_fired(from_pos: Vector2, to_pos: Vector2)
 signal mutation_available(options: Array)
+signal horde_commanded(world_pos: Vector2)
 
 
 func _ready() -> void:
@@ -182,6 +187,8 @@ func reset_run() -> void:
 	cop_count        = 0
 	cop_spawn_t      = 0.0
 	finished         = 0
+	horde_target      = Vector2.ZERO
+	horde_target_life = 0.0
 	evac_timer        = Tuning.EVAC_FIRST_TIME
 	evac_count        = 0
 	evac_points.clear()
@@ -280,7 +287,8 @@ func _update_player(delta: float) -> void:
 		_handle_arrest(delta)
 		return
 
-	_throw_cd = maxf(0.0, _throw_cd - delta)
+	_throw_cd         = maxf(0.0, _throw_cd - delta)
+	horde_target_life = maxf(0.0, horde_target_life - delta)
 
 	var mouse_world := _mouse_world_pos()
 	var to_mouse    := mouse_world - p_pos
@@ -569,6 +577,24 @@ func _tick_infected(i: int, delta: float) -> void:
 				_infect(v)
 				grab_target[i] = -1
 				grab_prog[i]   = 0.0
+			return
+
+	# Команда орды — двигаемся к цели (только на улице)
+	if horde_target_life > 0.0 and floor_idx[i] == 0:
+		var to_target := horde_target - pos[i]
+		var dist_t    := to_target.length()
+		if dist_t > Tuning.HORDE_ARRIVE_DIST:
+			vel[i] = vel[i].lerp(to_target.normalized() * speed, 0.12)
+			pos[i] += vel[i] * delta
+			pos[i]  = MapGen.push_out(pos[i], 0.3, floor_idx[i])
+			pos[i]  = _clamp_world(pos[i])
+			# Хватаем если жертва оказалась рядом по пути
+			for nb in _neighbors(pos[i], floor_idx[i]):
+				if (state[nb] == S.HEALTHY or state[nb] == S.COP) and floor_idx[nb] == floor_idx[i]:
+					if pos[nb].distance_squared_to(pos[i]) < grab_range_eff * grab_range_eff:
+						grab_target[i] = nb
+						grab_prog[i]   = 0.0
+						break
 			return
 
 	var target := _nearest(pos[i], floor_idx[i], S.HEALTHY, 25.0)
@@ -930,6 +956,17 @@ func _unhandled_input(event: InputEvent) -> void:
 					if _grab_wrong_count >= Tuning.QTE_WRONG_LIMIT:
 						suspicion += Tuning.SUSP_QTE_FAIL
 						_break_grab(true)
+			get_viewport().set_input_as_handled()
+			return
+
+	# ПКМ — команда орде
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and not p_being_arrested:
+			var target := _mouse_world_pos()
+			horde_target      = target
+			horde_target_life = Tuning.HORDE_CMD_DURATION
+			horde_commanded.emit(target)
 			get_viewport().set_input_as_handled()
 			return
 

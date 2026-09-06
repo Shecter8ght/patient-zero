@@ -10,6 +10,8 @@ var _bldg_wall_mats:  Array   # Array[StandardMaterial3D]
 var _bldg_roof_mats:  Array   # Array[StandardMaterial3D]
 var _bldg_rects:      Array   # Array[Rect2]
 var _evac_meshes: Array[MeshInstance3D] = []
+var _horde_marker: MeshInstance3D = null
+var _horde_mat:    StandardMaterial3D = null
 
 const FADE_DIST   := 16.0  # дистанция начала затухания (метры)
 const ALPHA_NEAR  := 0.12  # прозрачность у стены/крыши
@@ -30,6 +32,8 @@ func _ready() -> void:
 		_floor_nodes[fl] = fn
 	_render_mall_floors()
 	_render_transition_markers()
+	_horde_marker = _make_horde_marker()
+	_horde_marker.visible = false
 
 
 func _process(delta: float) -> void:
@@ -64,6 +68,18 @@ func _process(delta: float) -> void:
 
 		_apply_alpha(_bldg_wall_mats[i], wall_target, delta)
 		_apply_alpha(_bldg_roof_mats[i], roof_target, delta)
+
+	# Маркер орды
+	if _sim.horde_target_life > 0.0 and pfl == 0:
+		_horde_marker.visible  = true
+		_horde_marker.position = Vector3(_sim.horde_target.x, 0.15, _sim.horde_target.y)
+		var frac  := _sim.horde_target_life / Tuning.HORDE_CMD_DURATION
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.005)
+		if _horde_mat:
+			_horde_mat.albedo_color.a             = frac * (0.4 + 0.3 * pulse)
+			_horde_mat.emission_energy_multiplier = 1.5 + 2.0 * pulse
+	else:
+		_horde_marker.visible = false
 
 	# Точки эвакуации
 	var active_evac: Array = _sim.evac_points
@@ -317,6 +333,25 @@ func _make_evac_mesh() -> MeshInstance3D:
 	var mi  := MeshInstance3D.new()
 	mi.mesh = box
 	mi.set_surface_override_material(0, mat)
+	add_child(mi)
+	return mi
+
+
+func _make_horde_marker() -> MeshInstance3D:
+	_horde_mat = StandardMaterial3D.new()
+	_horde_mat.albedo_color             = Color(0.8, 0.15, 1.0, 0.7)
+	_horde_mat.transparency             = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_horde_mat.emission_enabled         = true
+	_horde_mat.emission                 = Color(0.6, 0.0, 1.0)
+	_horde_mat.emission_energy_multiplier = 3.0
+	_horde_mat.roughness                = 0.2
+	var cyl := CylinderMesh.new()
+	cyl.top_radius    = 2.2
+	cyl.bottom_radius = 2.2
+	cyl.height        = 0.12
+	cyl.material      = _horde_mat
+	var mi := MeshInstance3D.new()
+	mi.mesh = cyl
 	add_child(mi)
 	return mi
 

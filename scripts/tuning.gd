@@ -137,6 +137,10 @@ const MUT_SILENT_SPRINT   := 4
 const MUT_AUTO_GRAB       := 5
 const MUT_CROWD_SPREAD    := 6
 
+# --- Орда ---
+const HORDE_CMD_DURATION := 15.0  # секунд работы команды
+const HORDE_ARRIVE_DIST  := 3.0   # дистанция "прибыл к цели"
+
 const MUT_NAMES := [
 	"Тихое вскрытие",
 	"Быстрая инкубация",

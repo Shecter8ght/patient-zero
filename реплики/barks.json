@@ -1,0 +1,328 @@
+{
+  "version": 1,
+  "tones": ["grim", "comic"],
+  "languages": ["ru", "en"],
+  "notes": "priority — чем выше, тем важнее пузырь. cooldown — секунд на агента. global_cooldown — секунд на категорию по всей карте. radius — с какого расстояния игрок видит пузырь.",
+  "categories": {
+    "idle": {
+      "priority": 5,
+      "cooldown": 25.0,
+      "global_cooldown": 1.5,
+      "radius": 12,
+      "lines": {
+        "ru": {
+          "grim": ["Опять пробки.", "Надо было взять зонт.", "Он не перезвонил.", "Ещё полчаса и домой.", "Здесь всегда так тихо?", "Я на минуту, честно."],
+          "comic": ["Мне на смену через час.", "Свет опять вырубили.", "Утюг выключил? Выключил.", "Пятый день без горячей воды.", "Хлеб подорожал, вы видели?", "Сосед сверху опять сверлит."]
+        },
+        "en": {
+          "grim": ["Traffic again.", "Should have brought an umbrella.", "He never called back.", "Half an hour and I'm home.", "Is it always this quiet?", "One minute, I swear."],
+          "comic": ["My shift starts in an hour.", "Power's out again.", "Did I unplug the iron? I did.", "Fifth day with no hot water.", "Bread went up again, did you see?", "Upstairs is drilling. Again."]
+        }
+      }
+    },
+    "spot_infected": {
+      "priority": 90,
+      "cooldown": 6.0,
+      "global_cooldown": 0.8,
+      "radius": 20,
+      "lines": {
+        "ru": {
+          "grim": ["Там! Там кто-то!", "Что с ним такое?", "Он не в себе.", "Не подходи к нему!", "Бегите. Бегите!", "Господи, что это."],
+          "comic": ["Мужчина, вам плохо?", "Так, это уже не смешно.", "Он что, укусил её?!", "Я это не подписывал!", "Кто-нибудь вызовите санэпидстанцию!", "Всё, я на больничный."]
+        },
+        "en": {
+          "grim": ["There! Someone's there!", "What's wrong with him?", "He's not right.", "Don't go near him!", "Run. Run!", "God, what is that."],
+          "comic": ["Sir, are you unwell?", "Okay, this isn't funny anymore.", "Did he just bite her?!", "I did not sign up for this!", "Somebody call the health department!", "That's it, I'm calling in sick."]
+        }
+      }
+    },
+    "spot_body": {
+      "priority": 80,
+      "cooldown": 10.0,
+      "global_cooldown": 1.2,
+      "radius": 16,
+      "lines": {
+        "ru": {
+          "grim": ["Она не дышит.", "Не смотри туда.", "Тут ещё один.", "Их уже трое.", "Он был здесь минуту назад.", "Отойдите все."],
+          "comic": ["Так, это точно не обморок.", "Я труп видел только по телевизору.", "Может, спит?", "Нет-нет-нет, я мимо шёл.", "Кто-то должен это убрать.", "Я ничего не видел."]
+        },
+        "en": {
+          "grim": ["She's not breathing.", "Don't look at it.", "There's another one.", "That's three now.", "He was here a minute ago.", "Everyone back up."],
+          "comic": ["Okay, that's not a fainting spell.", "I've only seen a body on TV.", "Maybe he's sleeping?", "No no no, I was just walking by.", "Someone has to clean that up.", "I saw nothing."]
+        }
+      }
+    },
+    "flee_panic": {
+      "priority": 70,
+      "cooldown": 3.0,
+      "global_cooldown": 0.4,
+      "radius": 22,
+      "lines": {
+        "ru": {
+          "grim": ["Уходим! Быстро!", "Не оборачивайся!", "Сюда, сюда!", "Я не успею.", "Держись рядом!", "Быстрее, ну!"],
+          "comic": ["У меня ипотека!", "Я только вчера вышел на работу!", "Мои ключи! Ай, ладно.", "Я не в форме для такого!", "Простите, простите, извините!", "Пропустите, у меня дети!"]
+        },
+        "en": {
+          "grim": ["Move! Now!", "Don't look back!", "This way, this way!", "I won't make it.", "Stay with me!", "Faster, come on!"],
+          "comic": ["I have a mortgage!", "I started this job yesterday!", "My keys! Ah, forget it.", "I am not in shape for this!", "Sorry, sorry, excuse me!", "Let me through, I have kids!"]
+        }
+      }
+    },
+    "lost_friend": {
+      "priority": 75,
+      "cooldown": 20.0,
+      "global_cooldown": 2.0,
+      "radius": 14,
+      "lines": {
+        "ru": {
+          "grim": ["Он был прямо за мной.", "Я её отпустил.", "Не надо было разделяться.", "Я вернусь за ним.", "Она звала меня.", "Я слышал, как он кричал."],
+          "comic": ["Ну и где он? Опять отстал.", "Я же говорил держаться вместе!", "Он мне денег должен, между прочим.", "Вот и доверяй людям.", "Стоял тут. Только что стоял.", "Так, это уже некрасиво."]
+        },
+        "en": {
+          "grim": ["He was right behind me.", "I let go of her hand.", "We shouldn't have split up.", "I'm going back for him.", "She was calling my name.", "I heard him screaming."],
+          "comic": ["Where is he? Fell behind again.", "I said stay together!", "He owes me money, by the way.", "This is what I get for trusting people.", "He was right here. Just now.", "Okay, this is rude."]
+        }
+      }
+    },
+    "hiding": {
+      "priority": 40,
+      "cooldown": 12.0,
+      "global_cooldown": 1.0,
+      "radius": 7,
+      "lines": {
+        "ru": {
+          "grim": ["Тихо. Тихо.", "Не дыши.", "Оно ещё там?", "Считай до ста.", "Только не сюда.", "Я не выйду."],
+          "comic": ["Меня тут нет.", "Отличное место. Пыльное, но отличное.", "Дожить бы до пенсии.", "Я тут посижу, вы идите.", "Главное — не чихнуть.", "Как в детстве, только хуже."]
+        },
+        "en": {
+          "grim": ["Quiet. Quiet.", "Don't breathe.", "Is it still out there?", "Count to a hundred.", "Not in here. Please.", "I'm not coming out."],
+          "comic": ["I'm not here.", "Great spot. Dusty, but great.", "I'd like to reach retirement.", "I'll wait here, you go ahead.", "Just don't sneeze.", "Like childhood, but worse."]
+        }
+      }
+    },
+    "hiding_spotted": {
+      "priority": 95,
+      "cooldown": 8.0,
+      "global_cooldown": 0.5,
+      "radius": 18,
+      "lines": {
+        "ru": {
+          "grim": ["Оно меня видит.", "Нет. Нет!", "Помогите кто-нибудь!", "Дверь, держи дверь!", "Оно идёт сюда.", "Я не хочу так."],
+          "comic": ["Так, вы меня не видели.", "Здравствуйте. До свидания!", "Я вообще-то занят!", "Нашёл, да? Молодец.", "У меня прививка! Наверное!", "Мы можем это обсудить?"]
+        },
+        "en": {
+          "grim": ["It sees me.", "No. No!", "Somebody help!", "The door, hold the door!", "It's coming in here.", "I don't want it like this."],
+          "comic": ["You didn't see me.", "Hello. Goodbye!", "I'm busy, actually!", "Found me, huh? Good for you.", "I'm vaccinated! Probably!", "Can we talk about this?"]
+        }
+      }
+    },
+    "evac_repair": {
+      "priority": 50,
+      "cooldown": 15.0,
+      "global_cooldown": 1.5,
+      "radius": 15,
+      "lines": {
+        "ru": {
+          "grim": ["Ещё немного.", "Двигатель почти живой.", "Мне нужно больше времени.", "Прикройте меня, я работаю.", "Руки трясутся.", "Ещё две ходки."],
+          "comic": ["Я вообще-то бухгалтер.", "В ютубе это выглядело проще.", "Кто вообще так собирает?", "Изолентой держится. Пока.", "Не мешайте, я почти инженер.", "Работает? Работает! Не трогайте."]
+        },
+        "en": {
+          "grim": ["Almost there.", "Engine's nearly alive.", "I need more time.", "Cover me, I'm working.", "My hands are shaking.", "Two more trips."],
+          "comic": ["I'm an accountant, actually.", "It looked easier on YouTube.", "Who builds these things?", "Holding it with tape. For now.", "Don't touch, I'm basically an engineer.", "It works? It works! Nobody move."]
+        }
+      }
+    },
+    "evac_call": {
+      "priority": 85,
+      "cooldown": 18.0,
+      "global_cooldown": 3.0,
+      "radius": 26,
+      "lines": {
+        "ru": {
+          "grim": ["Все ко мне! Сюда!", "У нас есть выход!", "Собираемся у машины!", "Кто живой — на голос!", "Мы уходим все вместе.", "Не отставайте!"],
+          "comic": ["Организованно, я сказал!", "Занимаем очередь!", "Мест хватит всем. Наверное.", "Товарищи, без давки!", "Я тут за главного, идёмте!", "Кто последний — тот закрывает."]
+        },
+        "en": {
+          "grim": ["Everyone to me! Here!", "We have a way out!", "Regroup at the vehicle!", "If you're alive, follow my voice!", "We leave together.", "Don't fall behind!"],
+          "comic": ["In an orderly fashion, I said!", "Form a queue!", "There's room for everyone. Probably.", "No pushing, comrades!", "I'm in charge here, let's go!", "Last one out gets the door."]
+        }
+      }
+    },
+    "evac_ready": {
+      "priority": 100,
+      "cooldown": 30.0,
+      "global_cooldown": 5.0,
+      "radius": 40,
+      "lines": {
+        "ru": {
+          "grim": ["Заводится! Все сюда!", "Уходим, сейчас же!", "Последний шанс!", "Мы выберемся.", "Двери закрываются!"],
+          "comic": ["Поехали, поехали!", "Кто не успел — тот опоздал!", "Я же говорил, что заведу!", "Держитесь, водитель я так себе!", "До свидания, город!"]
+        },
+        "en": {
+          "grim": ["It's starting! Everyone in!", "We're leaving, now!", "Last chance!", "We're getting out.", "Doors are closing!"],
+          "comic": ["Go, go, go!", "Snooze you lose!", "Told you I'd start it!", "Hold on, I'm a terrible driver!", "Goodbye, city!"]
+        }
+      }
+    },
+    "suspect_neighbor": {
+      "priority": 65,
+      "cooldown": 20.0,
+      "global_cooldown": 2.5,
+      "radius": 12,
+      "lines": {
+        "ru": {
+          "grim": ["Ты какой-то бледный.", "Покажи руки.", "Где ты был всё это время?", "Он не моргает.", "Отойди от меня.", "Я тебе не верю."],
+          "comic": ["Вы кашляли. Я слышал.", "А ну дыхни.", "Что-то ты подозрительно молчишь.", "У вас справка есть?", "Я за вами наблюдаю.", "Сядьте отдельно, пожалуйста."]
+        },
+        "en": {
+          "grim": ["You look pale.", "Show me your arms.", "Where have you been?", "He isn't blinking.", "Get away from me.", "I don't believe you."],
+          "comic": ["You coughed. I heard it.", "Breathe on me. Go on.", "You're suspiciously quiet.", "Do you have a note from a doctor?", "I'm watching you.", "Sit over there. Please."]
+        }
+      }
+    },
+    "grabbed": {
+      "priority": 98,
+      "cooldown": 5.0,
+      "global_cooldown": 0.3,
+      "radius": 20,
+      "lines": {
+        "ru": {
+          "grim": ["Отпусти! Отпусти меня!", "Помогите!", "Нет, пожалуйста!", "Снимите его с меня!", "Я не хочу!", "Кто-нибудь!"],
+          "comic": ["Руки убрал!", "Я буду жаловаться!", "Это домогательство!", "Мужчина, я не в вашем вкусе!", "Отцепись, липучка!", "Я кусаюсь! Ой. Не то."]
+        },
+        "en": {
+          "grim": ["Let go! Let go of me!", "Help me!", "No, please!", "Get him off me!", "I don't want this!", "Somebody!"],
+          "comic": ["Hands off!", "I will file a complaint!", "This is harassment!", "Sir, I'm not your type!", "Get off me, you leech!", "I bite! Wait. Wrong move."]
+        }
+      }
+    },
+    "broke_free": {
+      "priority": 92,
+      "cooldown": 10.0,
+      "global_cooldown": 1.0,
+      "radius": 24,
+      "lines": {
+        "ru": {
+          "grim": ["Он там! Он схватил меня!", "Я вырвался, бегите!", "Оно живое, оно хватает!", "У него глаза не человеческие!", "За мной, оно за мной!"],
+          "comic": ["Всё, я побежал!", "Он меня трогал! Свидетели есть?", "Я быстрее, чем думал!", "Спасибо, физрук!", "Кроссовки не подвели!"]
+        },
+        "en": {
+          "grim": ["He's there! He grabbed me!", "I got free, run!", "It's alive, it grabs!", "His eyes aren't human!", "It's behind me, it's behind me!"],
+          "comic": ["Okay, I'm out!", "He touched me! Any witnesses?", "I'm faster than I thought!", "Thank you, gym class!", "The sneakers held!"]
+        }
+      }
+    },
+    "turning": {
+      "priority": 88,
+      "cooldown": 30.0,
+      "global_cooldown": 1.0,
+      "radius": 14,
+      "lines": {
+        "ru": {
+          "grim": ["Мне холодно.", "Что-то не так.", "Не подходите ко мне.", "Я не чувствую руку.", "Кажется, я...", "Уходите. Просто уходите."],
+          "comic": ["Мутит что-то.", "Наверное, шаурма.", "Я полежу минутку.", "Голова кружится, и вообще.", "Ну вот, а я в отпуск собирался.", "Странно себя чувствую. Ну ладно."]
+        },
+        "en": {
+          "grim": ["I'm cold.", "Something's wrong.", "Don't come near me.", "I can't feel my arm.", "I think I'm...", "Go. Just go."],
+          "comic": ["Feeling a bit off.", "Must be the street food.", "I'll just lie down a minute.", "Head's spinning, and so on.", "Great, and I had a holiday booked.", "Feel weird. Anyway."]
+        }
+      }
+    },
+    "horde_near": {
+      "priority": 82,
+      "cooldown": 12.0,
+      "global_cooldown": 1.5,
+      "radius": 22,
+      "lines": {
+        "ru": {
+          "grim": ["Их слишком много.", "Слышите? Они идут.", "Это не остановить.", "Нам не пройти.", "Они везде.", "Двери! Держите двери!"],
+          "comic": ["Сколько же вас!", "Это что, все с одного двора?", "Очередь как в поликлинике.", "Я столько людей в жизни не видел.", "Так, план Б. Есть план Б?", "Всё, отбегались."]
+        },
+        "en": {
+          "grim": ["There's too many.", "Hear that? They're coming.", "This can't be stopped.", "We can't get through.", "They're everywhere.", "The doors! Hold the doors!"],
+          "comic": ["How many of you are there!", "Are they all from one block?", "Queue's worse than the clinic.", "I've never seen this many people.", "Okay, plan B. Is there a plan B?", "Well, that's us done."]
+        }
+      }
+    },
+    "barricade": {
+      "priority": 55,
+      "cooldown": 15.0,
+      "global_cooldown": 1.5,
+      "radius": 14,
+      "lines": {
+        "ru": {
+          "grim": ["Тащи шкаф!", "Держится? Держится.", "Это их задержит.", "Ещё доску сюда.", "Не открывайте никому."],
+          "comic": ["Мебель жалко, конечно.", "Я эту стенку три года выплачивал.", "Ну хоть шкаф пригодился.", "Гвоздей мало, будет как будет.", "Ремонт всё равно планировали."]
+        },
+        "en": {
+          "grim": ["Push the cabinet!", "Holding? It's holding.", "That'll slow them down.", "One more board here.", "Don't open for anyone."],
+          "comic": ["Shame about the furniture.", "I paid that off over three years.", "At least the cabinet's useful now.", "Not enough nails. We'll see.", "We were going to renovate anyway."]
+        }
+      }
+    },
+    "militia": {
+      "priority": 78,
+      "cooldown": 20.0,
+      "global_cooldown": 2.0,
+      "radius": 20,
+      "lines": {
+        "ru": {
+          "grim": ["Хватит бегать. Мы дадим отпор.", "Бери что найдёшь.", "Их можно остановить.", "Стойте плечом к плечу.", "За наших."],
+          "comic": ["У меня лопата! У кого лучше?", "Мужики, ну что мы, зря в зал ходили?", "Я в армии служил. Поваром.", "Собрание жильцов объявляю открытым.", "Сейчас мы им устроим."]
+        },
+        "en": {
+          "grim": ["Enough running. We fight.", "Grab whatever you find.", "They can be stopped.", "Stand shoulder to shoulder.", "For our people."],
+          "comic": ["I've got a shovel! Beat that.", "Come on, was the gym for nothing?", "I served in the army. As a cook.", "I declare this tenants' meeting open.", "Let's show them something."]
+        }
+      }
+    },
+    "cop_arrive": {
+      "priority": 86,
+      "cooldown": 20.0,
+      "global_cooldown": 3.0,
+      "radius": 24,
+      "lines": {
+        "ru": {
+          "grim": ["Полиция! Оставайтесь на местах!", "Всем разойтись!", "Квартал закрыт.", "Не приближайтесь к заражённым.", "Это приказ!"],
+          "comic": ["Так, граждане, не толпимся!", "Кто вызывал? Никто? Хорошо.", "Документики предъявите.", "Здесь массовое мероприятие?", "Разошлись, я сказал!"]
+        },
+        "en": {
+          "grim": ["Police! Stay where you are!", "Everyone disperse!", "This block is closed.", "Do not approach the infected.", "That's an order!"],
+          "comic": ["Alright, no crowding!", "Who called this in? Nobody? Great.", "Papers, please.", "Is this a public gathering?", "Disperse, I said!"]
+        }
+      }
+    },
+    "cop_shoot": {
+      "priority": 94,
+      "cooldown": 6.0,
+      "global_cooldown": 0.8,
+      "radius": 26,
+      "lines": {
+        "ru": {
+          "grim": ["Цель на два часа!", "Огонь!", "Он не остановился.", "Перезаряжаюсь!", "Их слишком много, отходим!"],
+          "comic": ["Стой, стрелять буду! Ну вот, стрелял.", "Предупредительный в воздух! И ещё один.", "Так, это уже не по инструкции.", "Мне за это не платят.", "Патроны кончаются, между прочим!"]
+        },
+        "en": {
+          "grim": ["Target, two o'clock!", "Open fire!", "He didn't stop.", "Reloading!", "Too many, fall back!"],
+          "comic": ["Stop or I'll shoot! There, I shot.", "Warning shot! And another one.", "This is well outside procedure.", "I don't get paid for this.", "Running low on ammo, by the way!"]
+        }
+      }
+    },
+    "last_survivor": {
+      "priority": 99,
+      "cooldown": 25.0,
+      "global_cooldown": 5.0,
+      "radius": 30,
+      "lines": {
+        "ru": {
+          "grim": ["Здесь есть кто-нибудь?", "Я один остался?", "Ответьте кто-нибудь.", "Я не хочу быть последним.", "Слышит меня кто-нибудь?"],
+          "comic": ["Ау? Народ?", "Ну и ладно, мне больше достанется.", "Кажется, я выиграл. Или нет.", "Один я, что ли, нормальный?", "Свет за собой выключить?"]
+        },
+        "en": {
+          "grim": ["Is anyone there?", "Am I the last one?", "Somebody answer.", "I don't want to be the last.", "Can anyone hear me?"],
+          "comic": ["Hello? Anyone?", "Fine, more for me.", "I think I won. Or not.", "Am I the only sane one here?", "Should I get the lights?"]
+        }
+      }
+    }
+  }
+}

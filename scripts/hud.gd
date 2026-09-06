@@ -141,13 +141,16 @@ func _on_stats(healthy: int, infected: int, latent: int, dead: int,
 			pct = roundi(float(infected + dead) / float(total) * 100.0)
 		var evac_left := Tuning.EVAC_LOSE_AT - evac_count
 		var evac_warn := "(!)" if evac_count > Tuning.EVAC_LOSE_AT * 0.6 else ""
+		var horde_str := ""
+		if sim.horde_target_life > 0.0:
+			horde_str = "\n> ОРДА — цель (%.0f сек)" % sim.horde_target_life
 		label.text = (
 			"Заражено: %d%%   Здоровых: %d   Инкуб: %d\n" +
 			"Мертвых: %d   Полиции: %d   Подозрение: %d\n" +
 			"Эвакуировалось: %d / %d %s\n" +
-			"ЛКМ — захват   Alt+Sprint — бросок   Esc — пауза"
+			"ЛКМ — захват   ПКМ — орда   Alt+Sprint — бросок   Esc — пауза"
 		) % [pct, healthy, latent, dead, cops, roundi(suspicion),
-			evac_count, Tuning.EVAC_LOSE_AT, evac_warn]
+			evac_count, Tuning.EVAC_LOSE_AT, evac_warn] + horde_str
 
 		var st := bar.get_theme_stylebox("fill").duplicate() as StyleBoxFlat
 		if st:
