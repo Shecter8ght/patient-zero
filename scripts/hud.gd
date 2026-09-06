@@ -13,6 +13,10 @@ var _headline_label: Label
 var _headline_timer := 0.0
 var _paused    := false
 
+var _story_panel:  Control
+var _story_scroll: ScrollContainer
+var _story_text:   RichTextLabel
+
 
 func _ready() -> void:
 	sim   = get_node(sim_path)
@@ -53,6 +57,7 @@ func _ready() -> void:
 	_build_menu()
 	_build_mut_panel()
 	_build_headline_panel()
+	_build_story_panel()
 
 	sim.stats_changed.connect(_on_stats)
 	sim.run_finished.connect(_on_finished)
@@ -303,3 +308,165 @@ func _on_finished(result: int, seconds: float) -> void:
 		else ("ЭВАКУАЦИЯ — слишком много сбежало" if result == 3
 		else "ВЫЧИСЛЕН — конец")
 	)
+	await get_tree().create_timer(1.5).timeout
+	_build_story_text(result)
+	_story_panel.visible = true
+	_menu.visible        = true
+
+
+func _build_story_panel() -> void:
+	_story_panel = Control.new()
+	_story_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_story_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_story_panel.visible = false
+
+	var bg := ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.04, 0.04, 0.06, 0.96)
+	_story_panel.add_child(bg)
+
+	var title := Label.new()
+	title.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	title.offset_top    = 20
+	title.offset_bottom = 62
+	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_color_override("font_color", Color(0.95, 0.25, 0.15))
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.text = "ХРОНИКА ЗАРАЖЕНИЯ"
+	_story_panel.add_child(title)
+
+	_story_scroll = ScrollContainer.new()
+	_story_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_story_scroll.offset_top    = 68
+	_story_scroll.offset_bottom = -54
+	_story_scroll.offset_left   = 40
+	_story_scroll.offset_right  = -40
+	_story_panel.add_child(_story_scroll)
+
+	_story_text = RichTextLabel.new()
+	_story_text.bbcode_enabled = true
+	_story_text.fit_content    = true
+	_story_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_story_scroll.add_child(_story_text)
+
+	var close_btn := Button.new()
+	close_btn.text = "Закрыть  [R — рестарт]"
+	close_btn.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	close_btn.offset_top    = -50
+	close_btn.offset_bottom = -10
+	close_btn.offset_left   = 300
+	close_btn.offset_right  = -300
+	close_btn.pressed.connect(func(): _story_panel.visible = false)
+	_story_panel.add_child(close_btn)
+
+	$Root.add_child(_story_panel)
+
+
+func _build_story_text(result: int) -> void:
+	var txt := ""
+	var n   := sim.pos.size()
+
+	match result:
+		1: txt += "[color=#e84040][b]ГОРОД ПАЛ[/b][/color]\n"
+		2: txt += "[color=#e8a040][b]ВЫЧИСЛЕН[/b][/color]\n"
+		_: txt += "[color=#40e880][b]ЭВАКУАЦИЯ УДАЛАСЬ[/b][/color]\n"
+
+	txt += "Время: [b]%.0f сек[/b]   Заражено: [b]%d[/b] из [b]%d[/b]\n\n" % [
+		sim.elapsed, _count_infected(n), n
+	]
+
+	var first_victim := _find_first_victim(n)
+	if first_victim >= 0:
+		var d: Dictionary = sim.identities[first_victim]
+		txt += "[color=#ff6060][b]— Первая жертва —[/b][/color]\n"
+		txt += "[b]%s[/b], %s, %s.\n" % [
+			Identity.full_name(d), Identity.age_str(d), d["occupation"]
+		]
+		txt += "Заражён в [b]%.0f сек[/b] у %s. %s.\n\n" % [
+			sim.infected_at[first_victim],
+			Identity.LOCATIONS[randi() % Identity.LOCATIONS.size()],
+			(d["trait"] as String).capitalize()
+		]
+
+	var spreader := _find_top_spreader(n)
+	if spreader >= 0 and sim.spread_count[spreader] > 1:
+		var d: Dictionary = sim.identities[spreader]
+		txt += "[color=#ff9030][b]— Главный разносчик —[/b][/color]\n"
+		txt += "[b]%s[/b], %s — заразил ещё [b]%d[/b] человек.\n\n" % [
+			Identity.full_name(d), d["occupation"], sim.spread_count[spreader]
+		]
+
+	txt += "[color=#6090ff][b]— Обращённые стражи порядка —[/b][/color]\n"
+	var cop_shown := 0
+	for i in n:
+		if sim.was_cop[i] == 1 and sim.state[i] != 0:   # 0 = HEALTHY
+			var d: Dictionary = sim.identities[i]
+			txt += "Офицер [b]%s[/b] — заразил ещё %d чел.\n" % [
+				Identity.full_name(d), sim.spread_count[i]
+			]
+			cop_shown += 1
+			if cop_shown >= 5:
+				break
+	if cop_shown == 0:
+		txt += "Ни один офицер не был обращён.\n"
+	txt += "\n"
+
+	txt += "[color=#aaaaaa][b]— Истории —[/b][/color]\n"
+	var shown := 0
+	var indices := range(n)
+	indices.shuffle()
+	for i in indices:
+		if shown >= 7:
+			break
+		var d: Dictionary = sim.identities[i]
+		if sim.state[i] == 0:   # HEALTHY
+			txt += "[color=#40e880]%s, %s — выжил. %s.[/color]\n" % [
+				Identity.full_name(d), d["occupation"], (d["trait"] as String).capitalize()
+			]
+			shown += 1
+		elif sim.state[i] in [1, 2, 4, 5]:   # INFECTED/DEAD/LATENT/INFECTED_COP
+			if sim.infected_by[i] == -1:
+				txt += "%s, %s — пойман игроком у %s.\n" % [
+					Identity.full_name(d), d["occupation"],
+					Identity.LOCATIONS[randi() % Identity.LOCATIONS.size()]
+				]
+			elif sim.infected_by[i] >= 0:
+				var inf_d: Dictionary = sim.identities[sim.infected_by[i]]
+				txt += "%s, %s — заражён %s в цепочке.\n" % [
+					Identity.full_name(d), d["occupation"], Identity.full_name(inf_d)
+				]
+			else:
+				txt += "%s, %s — заражён. %s.\n" % [
+					Identity.full_name(d), d["occupation"], (d["trait"] as String).capitalize()
+				]
+			shown += 1
+
+	_story_text.text = txt
+
+
+func _count_infected(n: int) -> int:
+	var c := 0
+	for i in n:
+		if sim.state[i] != 0:   # 0 = HEALTHY
+			c += 1
+	return c
+
+
+func _find_first_victim(n: int) -> int:
+	var best   := -1
+	var best_t := INF
+	for i in n:
+		if sim.infected_at[i] > 0.0 and sim.infected_at[i] < best_t:
+			best_t = sim.infected_at[i]
+			best   = i
+	return best
+
+
+func _find_top_spreader(n: int) -> int:
+	var best   := -1
+	var best_c := 0
+	for i in n:
+		if sim.spread_count[i] > best_c:
+			best_c = sim.spread_count[i]
+			best   = i
+	return best

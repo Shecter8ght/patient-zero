@@ -89,6 +89,15 @@ var _esc_checked     := [false, false, false]
 # --- SWAT ---
 var is_swat: PackedByteArray
 
+# --- Идентичности и трекинг заражений ---
+var identities:     Array          = []   # Array[Dictionary], один на агента
+var infected_by:    PackedInt32Array      # -1=игрок, -2=аура, -3=нет
+var infected_at:    PackedFloat32Array
+var infected_where: PackedVector2Array
+var spread_count:   PackedInt32Array      # сколько других заразил агент
+var _id_rng        := RandomNumberGenerator.new()
+var _last_infector := -3                  # выставлять перед каждым _infect()
+
 var _grid := {}
 
 signal run_finished(result: int, seconds: float)
@@ -114,6 +123,11 @@ func reset_run() -> void:
 	is_swat.resize(n)
 	archetype.resize(n);   infect_thresh.resize(n); photo_timer.resize(n)
 	has_phone.resize(n);   phone_timer.resize(n)
+	infected_by.resize(n); infected_at.resize(n)
+	infected_where.resize(n); spread_count.resize(n)
+	identities.clear();    identities.resize(n)
+	_id_rng.randomize()
+	_last_infector = -3
 
 	MapGen.generate()
 
@@ -172,6 +186,11 @@ func reset_run() -> void:
 		var can_have_phone := (arch == Tuning.ARCH_NORMAL or arch == Tuning.ARCH_ELDER)
 		has_phone[i]   = 1 if (can_have_phone and randf() < Tuning.PHONE_FREQ) else 0
 		phone_timer[i] = 0.0
+		infected_by[i]    = -3
+		infected_at[i]    = 0.0
+		infected_where[i] = Vector2.ZERO
+		spread_count[i]   = 0
+		identities[i]     = Identity.generate(_id_rng, arch, false)
 
 	# -------- игрок появляется в переулке у края карты --------
 	var corner := Vector2(-65.0, -65.0)
@@ -454,6 +473,12 @@ func _count_helpers(v: int) -> int:
 
 
 func _infect(i: int) -> void:
+	infected_by[i]    = _last_infector
+	infected_at[i]    = elapsed
+	infected_where[i] = pos[i]
+	if _last_infector >= 0:
+		spread_count[_last_infector] += 1
+	_last_infector = -3
 	phone_timer[i] = 0.0   # заразили — звонок отменён
 	was_cop[i] = 1 if state[i] == S.COP else 0
 	if state[i] == S.COP:
@@ -541,7 +566,7 @@ func _update_agents(delta: float) -> void:
 
 	# MUT_CROWD_SPREAD — заражённые медленно заражают соседей
 	if Tuning.MUT_CROWD_SPREAD in active_mutations:
-		var to_infect: Array[int] = []
+		var to_infect: Array = []   # pairs [victim, infector]
 		for i in pos.size():
 			if state[i] != S.INFECTED and state[i] != S.INFECTED_COP:
 				continue
@@ -551,9 +576,10 @@ func _update_agents(delta: float) -> void:
 						grab_prog[nb] += 0.04 * delta
 						if grab_prog[nb] >= 1.0:
 							grab_prog[nb] = 0.0
-							to_infect.append(nb)
-		for j in to_infect:
-			_infect(j)
+							to_infect.append([nb, i])
+		for pair in to_infect:
+			_last_infector = pair[1]
+			_infect(pair[0])
 
 	# Проверка порога мутации
 	var total_infected := infected + latent + dead
@@ -613,6 +639,7 @@ func _tick_infected(i: int, delta: float) -> void:
 			grab_prog[i] += delta / base
 			vel[i] = vel[i].move_toward(Vector2.ZERO, Tuning.ACCEL * delta)
 			if grab_prog[i] >= 1.0:
+				_last_infector = i
 				_infect(v)
 				grab_target[i] = -1
 				grab_prog[i]   = 0.0
@@ -917,8 +944,9 @@ func _spawn_cops(delta: float) -> void:
 				(escalation_level >= 3 or randf() < 0.5))
 			is_swat[i] = 1 if spawn_as_swat else 0
 			if is_swat[i] == 1:
-				resist[i]       = 2.0
+				resist[i]        = 2.0
 				infect_thresh[i] = Tuning.ARCH_THRESH[Tuning.ARCH_NORMAL] * Tuning.SWAT_GRAB_MULT
+			identities[i] = Identity.generate(_id_rng, Tuning.ARCH_NORMAL, true)
 			return
 
 
@@ -1018,6 +1046,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					_qte_timer     = 0.0
 					if p_prog >= 1.0:
 						suspicion = maxf(0.0, suspicion - 25.0)
+						_last_infector = -1
 						_infect(_arresting_cop)
 						_clear_arrest()
 				get_viewport().set_input_as_handled()
@@ -1042,6 +1071,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					if p_prog >= infect_thresh[p_grab]:
 						var help2 := _count_helpers(p_grab)
 						suspicion += Tuning.SUSP_GRAB_SEEN if help2 > 0 else 1.0
+						_last_infector = -1
 						_infect(p_grab)
 						p_grab = -1
 						p_prog = 0.0
