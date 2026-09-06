@@ -66,14 +66,16 @@ var cop_count     := 0
 var cop_spawn_t   := 0.0
 var finished      := 0   # 0=идёт, 1=победа, 2=поражение
 
-var evac_timer  := 0.0
-var evac_count  := 0
+var evac_timer      := 0.0
+var evac_count      := 0
 var evac_points: Array[Dictionary] = []
+var _evac_announced := false
 
 # --- Орда ---
 var horde_target       := Vector2.ZERO
 var horde_target_life  := 0.0
 var horde_target_agent := -1   # индекс агента-цели или -1 (позиционная цель)
+var horde_floor        := 0    # этаж, с которого выдана команда
 
 # --- Мутации ---
 var active_mutations: Array[int] = []
@@ -104,7 +106,7 @@ var _grid := {}
 signal run_finished(result: int, seconds: float)
 signal escalation_triggered(level: int, headline: String)
 signal stats_changed(healthy: int, infected: int, latent: int, dead: int, cops: int, suspicion: float, arrest_prog: float, qte_key: String, evac_count: int)
-signal shot_fired(from_pos: Vector2, to_pos: Vector2)
+signal shot_fired(from_pos: Vector2, to_pos: Vector2, is_swat_shot: bool)
 signal mutation_available(options: Array)
 signal horde_commanded(world_pos: Vector2)
 signal bark_event(agent: int, cat: String, pos2: Vector2, fl: int)
@@ -232,9 +234,11 @@ func reset_run() -> void:
 	horde_target       = Vector2.ZERO
 	horde_target_life  = 0.0
 	horde_target_agent = -1
+	horde_floor        = 0
 	evac_timer        = Tuning.EVAC_FIRST_TIME
 	evac_count        = 0
 	evac_points.clear()
+	_evac_announced   = false
 	active_mutations.clear()
 	_next_mut_at      = Tuning.MUT_THRESHOLD
 	_pending_mutation = false
@@ -662,8 +666,8 @@ func _tick_infected(i: int, delta: float) -> void:
 				grab_prog[i]   = 0.0
 			return
 
-	# Команда орды — двигаемся к цели
-	if horde_target_life > 0.0:
+	# Команда орды — только агенты на том же этаже, что и игрок при вводе команды
+	if horde_target_life > 0.0 and floor_idx[i] == horde_floor:
 		# Агент-цель: берём его текущую позицию; если уже заражён — снимаем метку
 		var move_to := horde_target
 		if horde_target_agent >= 0:
@@ -737,12 +741,15 @@ func _tick_cop(i: int, delta: float) -> void:
 		if state[t] == S.INFECTED or state[t] == S.INFECTED_COP:
 			goal = pos[t]
 			if timer[i] <= 0.0 and pos[t].distance_to(pos[i]) < Tuning.COP_SHOOT_RANGE:
-				health[t] = maxi(0, health[t] - 1)
 				timer[i] = Tuning.COP_SHOOT_CD
-				shot_fired.emit(pos[i], pos[t])
+				var swat_shot := is_swat[i] == 1
+				var hs_chance := Tuning.HEADSHOT_CHANCE_SWAT if swat_shot else Tuning.HEADSHOT_CHANCE_COP
+				shot_fired.emit(pos[i], pos[t], swat_shot)
 				bark_event.emit(i, "cop_shoot", pos[i], floor_idx[i])
-				if health[t] == 0:
-					state[t] = S.DEAD
+				if randf() < hs_chance:
+					state[t] = S.DEAD   # хедшот — мгновенная смерть
+				else:
+					health[t] = maxi(1, health[t] - 1)   # тело — минимум 1 HP
 		else:
 			alert[i] = 0.0
 
@@ -823,30 +830,38 @@ func _tick_civilian(i: int, delta: float) -> void:
 			if sees_panic:
 				phone_timer[i] = Tuning.PHONE_CALL_TIME
 
-	# Эвакуация: тянет здоровых без паники на улице к точке
+	# Эвакуация: только паникующие агенты бегут к автобусу
 	var going_to_evac := false
-	if state[i] == S.HEALTHY and panic[i] <= 0.0 and floor_idx[i] == 0 and not evac_points.is_empty():
+	if state[i] == S.HEALTHY and panic[i] > 0.0 and floor_idx[i] == 0 and not evac_points.is_empty():
 		var nearest_evac := Vector2.ZERO
+		var best_ep: Dictionary = {}
 		var nearest_d    := INF
 		for ep in evac_points:
+			# Игрок у автобуса — агенты его боятся, ищут другой
+			if p_pos.distance_squared_to(ep["pos"]) < Tuning.EVAC_PLAYER_BLOCK_R * Tuning.EVAC_PLAYER_BLOCK_R:
+				continue
 			var d2 := pos[i].distance_squared_to(ep["pos"])
 			if d2 < nearest_d:
 				nearest_d    = d2
 				nearest_evac = ep["pos"]
-		if nearest_d < Tuning.EVAC_PULL_RANGE * Tuning.EVAC_PULL_RANGE:
+				best_ep      = ep
+		if not best_ep.is_empty():
 			var to_evac   := nearest_evac - pos[i]
 			var dist_evac := to_evac.length()
 			if dist_evac < Tuning.EVAC_RADIUS:
-				state[i]    = S.DEAD
-				evac_count += 1
-				if evac_count >= Tuning.EVAC_LOSE_AT and finished == 0:
-					finished = 3
-					run_finished.emit(3, elapsed)
-				return
-			if not going_to_evac:
+				if best_ep["board_cd"] <= 0.0:
+					state[i]   = S.DEAD
+					evac_count += 1
+					best_ep["board_cd"] = Tuning.EVAC_BOARD_INTERVAL
+					if evac_count >= Tuning.EVAC_LOSE_AT and finished == 0:
+						finished = 3
+						run_finished.emit(3, elapsed)
+					return
+			else:
+				going_to_evac = true
 				bark_event.emit(i, "evac_call", pos[i], floor_idx[i])
-			going_to_evac = true
-			vel[i] = vel[i].lerp((to_evac / dist_evac) * Tuning.EVAC_PULL_SPEED, 0.15)
+				var evac_spd := Tuning.CIV_PANIC * Tuning.ARCH_PANIC_MULT[archetype[i]]
+				vel[i] = vel[i].lerp((to_evac / dist_evac) * evac_spd, 0.15)
 
 	var flee   := Vector2.ZERO
 	var threats := 0
@@ -892,7 +907,9 @@ func _tick_civilian(i: int, delta: float) -> void:
 			bark_event.emit(i, "flee_panic", pos[i], floor_idx[i])
 		panic[i] = Tuning.PANIC_MEMORY
 
-	if panic[i] > 0.0:
+	if going_to_evac:
+		panic[i] = maxf(0.0, panic[i] - delta)   # таймер паники тикает, но flee не перебивает
+	elif panic[i] > 0.0:
 		panic[i] -= delta
 		var panic_spd: float = Tuning.CIV_PANIC * Tuning.ARCH_PANIC_MULT[archetype[i]]
 		if flee.length_squared() > 0.001:
@@ -978,7 +995,8 @@ func _spawn_cops(delta: float) -> void:
 func _tick_evac(delta: float) -> void:
 	var i := evac_points.size() - 1
 	while i >= 0:
-		evac_points[i]["life"] -= delta
+		evac_points[i]["life"]     -= delta
+		evac_points[i]["board_cd"]  = maxf(0.0, evac_points[i]["board_cd"] - delta)
 		if evac_points[i]["life"] <= 0.0:
 			evac_points.remove_at(i)
 		i -= 1
@@ -988,7 +1006,6 @@ func _tick_evac(delta: float) -> void:
 		return
 	evac_timer = Tuning.EVAC_INTERVAL
 
-
 	for spot in Tuning.EVAC_SPOTS:
 		var taken := false
 		for ep in evac_points:
@@ -996,7 +1013,10 @@ func _tick_evac(delta: float) -> void:
 				taken = true
 				break
 		if not taken:
-			evac_points.append({"pos": spot, "life": Tuning.EVAC_POINT_LIFE})
+			evac_points.append({"pos": spot, "life": Tuning.EVAC_POINT_LIFE, "board_cd": 0.0})
+			if not _evac_announced:
+				_evac_announced = true
+				escalation_triggered.emit(-1, "ЭВАКУАЦИЯ! АВТОБУСЫ У ПЕРИМЕТРА ГОРОДА")
 			break
 
 
@@ -1130,6 +1150,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			horde_target_agent = best
 			horde_target       = click_pos if best < 0 else pos[best]
 			horde_target_life  = Tuning.HORDE_CMD_DURATION
+			horde_floor        = p_floor
 			horde_commanded.emit(horde_target)
 			get_viewport().set_input_as_handled()
 			return

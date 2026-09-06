@@ -149,8 +149,32 @@ func _on_stats(healthy: int, infected: int, latent: int, dead: int,
 		var pct   := 0
 		if total > 0:
 			pct = roundi(float(infected + dead) / float(total) * 100.0)
-		var evac_left := Tuning.EVAC_LOSE_AT - evac_count
 		var evac_warn := "(!)" if evac_count > Tuning.EVAC_LOSE_AT * 0.6 else ""
+
+		# Направление на ближайший автобус
+		var bus_str := ""
+		if not sim.evac_points.is_empty():
+			var nearest_d := INF
+			var nearest_pos := Vector2.ZERO
+			for ep in sim.evac_points:
+				var d2: float = sim.p_pos.distance_squared_to(ep["pos"])
+				if d2 < nearest_d:
+					nearest_d   = d2
+					nearest_pos = ep["pos"]
+			var dist_m := sqrt(nearest_d)
+			var dir    := nearest_pos - sim.p_pos
+			var deg    := fmod(rad_to_deg(dir.angle()) + 360.0, 360.0)
+			var compass: String
+			if   deg < 22.5  or deg >= 337.5: compass = "→"
+			elif deg < 67.5:                   compass = "↘"
+			elif deg < 112.5:                  compass = "↓"
+			elif deg < 157.5:                  compass = "↙"
+			elif deg < 202.5:                  compass = "←"
+			elif deg < 247.5:                  compass = "↖"
+			elif deg < 292.5:                  compass = "↑"
+			else:                              compass = "↗"
+			bus_str = "   АВТОБУС %s %.0fм" % [compass, dist_m]
+
 		var horde_str := ""
 		if sim.horde_target_life > 0.0:
 			var ta: int = sim.horde_target_agent
@@ -160,12 +184,12 @@ func _on_stats(healthy: int, infected: int, latent: int, dead: int,
 			else:
 				horde_str = "\n> ОРДА — позиция (%.0f сек)" % sim.horde_target_life
 		label.text = (
-			"Заражено: %d%%   Здоровых: %d   Инкуб: %d\n" +
+			"Заражено: %d%%   Активных: %d   Инкуб: %d\n" +
 			"Мертвых: %d   Полиции: %d   Подозрение: %d\n" +
-			"Эвакуировалось: %d / %d %s\n" +
+			"Эвакуировалось: %d / %d %s%s\n" +
 			"ЛКМ — захват   ПКМ — орда   Alt+Sprint — бросок   Esc — пауза"
-		) % [pct, healthy, latent, dead, cops, roundi(suspicion),
-			evac_count, Tuning.EVAC_LOSE_AT, evac_warn] + horde_str
+		) % [pct, infected, latent, dead, cops, roundi(suspicion),
+			evac_count, Tuning.EVAC_LOSE_AT, evac_warn, bus_str] + horde_str
 
 		var st := bar.get_theme_stylebox("fill").duplicate() as StyleBoxFlat
 		if st:

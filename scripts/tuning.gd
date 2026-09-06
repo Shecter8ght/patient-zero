@@ -74,7 +74,11 @@ const WIN_RATIO := 1.0
 const QTE_WRONG_LIMIT   := 2      # неверных нажатий до срыва захвата
 const GRAB_QTE_INTERVAL := 2.5    # секунд на реакцию (истёк = промах)
 const SUSP_QTE_FAIL     := 18.0   # подозрение при срыве через QTE
-const AGENT_HEALTH      := 3      # выстрелов до смерти агента
+const AGENT_HEALTH          := 3      # попаданий до смерти (тело не добивает — только хедшот)
+const HEADSHOT_CHANCE_COP  := 0.22   # вероятность хедшота у копа
+const HEADSHOT_CHANCE_SWAT := 0.50   # вероятность хедшота у SWAT
+const EVAC_BOARD_INTERVAL  := 1.5    # сек между посадками на один автобус
+const EVAC_PLAYER_BLOCK_R  := 6.0    # радиус вокруг игрока, блокирующий посадку
 
 # --- Бросок (ALT во время спринта) ---
 const THROW_RANGE      := 7.0    # дальность броска (м)
