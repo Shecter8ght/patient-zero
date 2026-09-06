@@ -362,83 +362,191 @@ func _build_story_panel() -> void:
 	$Root.add_child(_story_panel)
 
 
+func _g(d: Dictionary, m: String, f: String) -> String:
+	return m if bool(d.get("male", true)) else f
+
+func _cap(s: String) -> String:
+	if s.is_empty(): return s
+	return s[0].to_upper() + s.substr(1)
+
+func _n_people(cnt: int) -> String:
+	var m10 := cnt % 10
+	var m100 := cnt % 100
+	if m10 >= 2 and m10 <= 4 and not (m100 >= 12 and m100 <= 14):
+		return "человека"
+	return "человек"
+
+
 func _build_story_text(result: int) -> void:
 	var txt := ""
 	var n: int = sim.pos.size()
 
 	match result:
-		1: txt += "[color=#e84040][b]ГОРОД ПАЛ[/b][/color]\n"
-		2: txt += "[color=#e8a040][b]ВЫЧИСЛЕН[/b][/color]\n"
-		_: txt += "[color=#40e880][b]ЭВАКУАЦИЯ УДАЛАСЬ[/b][/color]\n"
+		1: txt += "[color=#e84040][b]▼ ГОРОД ПАЛ ▼[/b][/color]\n"
+		2: txt += "[color=#e8a040][b]▼ ВЫЧИСЛЕН ▼[/b][/color]\n"
+		_: txt += "[color=#40e880][b]▼ ЭВАКУАЦИЯ УДАЛАСЬ ▼[/b][/color]\n"
 
-	txt += "Время: [b]%.0f сек[/b]   Заражено: [b]%d[/b] из [b]%d[/b]\n\n" % [
+	txt += "Время: [b]%.0f сек[/b] · Заражено: [b]%d[/b] из [b]%d[/b]\n\n" % [
 		sim.elapsed, _count_infected(n), n
 	]
 
+	# --- Первая жертва ---
 	var first_victim := _find_first_victim(n)
 	if first_victim >= 0:
 		var d: Dictionary = sim.identities[first_victim]
-		txt += "[color=#ff6060][b]— Первая жертва —[/b][/color]\n"
-		txt += "[b]%s[/b], %s, %s.\n" % [
-			Identity.full_name(d), Identity.age_str(d), d["occupation"]
-		]
-		txt += "Заражён в [b]%.0f сек[/b] у %s. %s.\n\n" % [
-			sim.infected_at[first_victim],
-			Identity.LOCATIONS[randi() % Identity.LOCATIONS.size()],
-			(d["trait"] as String).capitalize()
-		]
+		var loc: String = Identity.LOCATIONS[randi() % Identity.LOCATIONS.size()]
+		var tr  := str(d["trait"])
+		txt += "[color=#ff6060][b]━━ ПЕРВАЯ ЖЕРТВА ━━[/b][/color]\n"
+		txt += "[b]%s[/b], %s, %s.\n" % [Identity.full_name(d), Identity.age_str(d), d["occupation"]]
+		var t0 := int(sim.infected_at[first_victim])
+		match randi() % 4:
+			0:
+				txt += "%s %s — прямо %s, на %d-й секунде.\n" % [
+					_g(d, "Схвачен", "Схвачена"), _g(d, "первым", "первой"), loc, t0
+				]
+				txt += "%s. %s.\n\n" % [_cap(tr), _g(d, "Кричал — никто не среагировал", "Кричала — никто не среагировал")]
+			1:
+				txt += "На %d-й секунде %s %s %s — и всё.\n" % [
+					t0, _g(d, "он просто стоял", "она просто стояла"), loc, _g(d, "и зевал", "и зевала")
+				]
+				txt += "%s. Первый%s в хронике заражения.\n\n" % [_cap(tr), _g(d, "", "ая")]
+			2:
+				txt += "%s оказал%s не в то время и не в том месте.\n" % [
+					_g(d, "Он", "Она"), _g(d, "ся", "ась")
+				]
+				txt += "%s. Заражён%s на %d-й секунде, %s.\n\n" % [
+					_cap(tr), _g(d, "", "а"), t0, loc
+				]
+			_:
+				txt += "Утром %s думал%s о работе. На %d-й секунде %s уже %s заражённым%s.\n" % [
+					_g(d, "он", "она"), _g(d, "", "а"), t0,
+					_g(d, "он", "она"), _g(d, "был", "была"), _g(d, "", "а")
+				]
+				txt += "%s. Первым%s.\n\n" % [_cap(tr), _g(d, "", "ой")]
 
+	# --- Главный разносчик ---
 	var spreader := _find_top_spreader(n)
 	if spreader >= 0 and sim.spread_count[spreader] > 1:
 		var d: Dictionary = sim.identities[spreader]
-		txt += "[color=#ff9030][b]— Главный разносчик —[/b][/color]\n"
-		txt += "[b]%s[/b], %s — заразил ещё [b]%d[/b] человек.\n\n" % [
-			Identity.full_name(d), d["occupation"], sim.spread_count[spreader]
-		]
+		var sc: int = sim.spread_count[spreader]
+		var tr  := str(d["trait"])
+		txt += "[color=#ff9030][b]━━ ГЛАВНЫЙ РАЗНОСЧИК ━━[/b][/color]\n"
+		txt += "[b]%s[/b], %s.\n" % [Identity.full_name(d), d["occupation"]]
+		match randi() % 3:
+			0:
+				txt += "%s — %s заразил%s ещё [b]%d[/b] %s.\n" % [
+					_cap(tr), _g(d, "он", "она"), _g(d, "", "а"), sc, _n_people(sc)
+				]
+				txt += "%s %s сам%s того не заметил%s.\n\n" % [
+					_g(d, "Просто ходил", "Просто ходила"), _g(d, "и", "и"),
+					_g(d, "", "а"), _g(d, "", "а")
+				]
+			1:
+				txt += "За один забег %s распростран%s вирус на [b]%d[/b] %s.\n" % [
+					_g(d, "он", "она"), _g(d, "ил", "ила"), sc, _n_people(sc)
+				]
+				txt += "%s. Рекордсмен%s.\n\n" % [_cap(tr), _g(d, "", "ка")]
+			_:
+				txt += "[b]%d[/b] %s — столько %s успел%s заразить, пока не вскрылс%s.\n" % [
+					sc, _n_people(sc), _g(d, "он", "она"), _g(d, "", "а"), _g(d, "я", "ась")
+				]
+				txt += "%s. Невольный чемпион.\n\n" % _cap(tr)
 
-	txt += "[color=#6090ff][b]— Обращённые стражи порядка —[/b][/color]\n"
+	# --- Обращённые ---
+	txt += "[color=#6090ff][b]━━ ОБРАЩЁННЫЕ СТРАЖИ ПОРЯДКА ━━[/b][/color]\n"
 	var cop_shown := 0
 	for i in n:
-		if sim.was_cop[i] == 1 and sim.state[i] != 0:   # 0 = HEALTHY
+		if sim.was_cop[i] == 1 and sim.state[i] != 0:
 			var d: Dictionary = sim.identities[i]
-			txt += "Офицер [b]%s[/b] — заразил ещё %d чел.\n" % [
-				Identity.full_name(d), sim.spread_count[i]
+			var sc: int = sim.spread_count[i]
+			var lines := [
+				"Офицер [b]%s[/b] принял%s другую сторону. Заразил%s %d %s после обращения." % [
+					Identity.full_name(d), _g(d, "", "а"), _g(d, "", "а"), sc, _n_people(sc)
+				],
+				"Офицер [b]%s[/b]: с утра патрулировал, к вечеру — сам%s источник. [b]%d[/b] заражён%s." % [
+					Identity.full_name(d), _g(d, "", "а"), sc, _g(d, "о", "о")
+				],
+				"[b]%s[/b] не устоял%s. Бывший страж порядка, %d новых жертв." % [
+					Identity.full_name(d), _g(d, "", "а"), sc
+				],
 			]
+			txt += lines[randi() % lines.size()] + "\n"
 			cop_shown += 1
 			if cop_shown >= 5:
 				break
 	if cop_shown == 0:
-		txt += "Ни один офицер не был обращён.\n"
+		txt += "Ни один офицер не был обращён — повезло им.\n"
 	txt += "\n"
 
-	txt += "[color=#aaaaaa][b]— Истории —[/b][/color]\n"
+	# --- Хроника выживших и заражённых ---
+	txt += "[color=#aaaaaa][b]━━ ЧТО СТАЛО С ОСТАЛЬНЫМИ ━━[/b][/color]\n"
 	var shown := 0
 	var indices := range(n)
 	indices.shuffle()
 	for i in indices:
-		if shown >= 7:
+		if shown >= 8:
 			break
 		var d: Dictionary = sim.identities[i]
-		if sim.state[i] == 0:   # HEALTHY
-			txt += "[color=#40e880]%s, %s — выжил. %s.[/color]\n" % [
-				Identity.full_name(d), d["occupation"], (d["trait"] as String).capitalize()
+		var tr  := str(d["trait"])
+		var nm  := Identity.full_name(d)
+		var occ := str(d["occupation"])
+
+		if sim.state[i] == 0:
+			var lines := [
+				"[color=#40e880][b]%s[/b], %s — выжил%s. Уехал%s первым%s автобусом. %s.[/color]" % [
+					nm, occ, _g(d, "", "а"), _g(d, "", "а"), _g(d, "", "ым"), _cap(tr)
+				],
+				"[color=#40e880][b]%s[/b], %s. %s. Добрался%s до эвакуации — сам%s не верит.[/color]" % [
+					nm, occ, _cap(tr), _g(d, "", "ась"), _g(d, "", "а")
+				],
+				"[color=#40e880][b]%s[/b], %s — жив%s. %s. Будет рассказывать внукам.[/color]" % [
+					nm, occ, _g(d, "", "а"), _cap(tr)
+				],
 			]
+			txt += lines[randi() % lines.size()] + "\n"
 			shown += 1
-		elif sim.state[i] in [1, 2, 4, 5]:   # INFECTED/DEAD/LATENT/INFECTED_COP
+		elif sim.state[i] in [1, 2, 4, 5]:
 			if sim.infected_by[i] == -1:
-				txt += "%s, %s — пойман игроком у %s.\n" % [
-					Identity.full_name(d), d["occupation"],
-					Identity.LOCATIONS[randi() % Identity.LOCATIONS.size()]
+				var loc: String = Identity.LOCATIONS[randi() % Identity.LOCATIONS.size()]
+				var lines := [
+					"[b]%s[/b], %s. Пойман%s игроком %s. %s. Кричал%s — поздно." % [
+						nm, occ, _g(d, "", "а"), loc, _cap(tr), _g(d, "", "а")
+					],
+					"[b]%s[/b], %s. %s. %s оказал%s %s — и попал%s прямо в руки." % [
+						nm, occ, _cap(tr), _g(d, "Он", "Она"), _g(d, "ся", "ась"), loc, _g(d, "", "а")
+					],
+					"[b]%s[/b], %s. Схвачен%s %s. Успел%s подумать: «%s»." % [
+						nm, occ, _g(d, "", "а"), loc, _g(d, "", "а"), tr
+					],
 				]
+				txt += lines[randi() % lines.size()] + "\n"
 			elif sim.infected_by[i] >= 0:
 				var inf_d: Dictionary = sim.identities[sim.infected_by[i]]
-				txt += "%s, %s — заражён %s в цепочке.\n" % [
-					Identity.full_name(d), d["occupation"], Identity.full_name(inf_d)
+				var inf_nm := Identity.full_name(inf_d)
+				var lines := [
+					"[b]%s[/b], %s. Заражён%s через [b]%s[/b] — %s просто прошёл%s мимо. %s." % [
+						nm, occ, _g(d, "", "а"), inf_nm,
+						_g(inf_d, "тот", "та"), _g(inf_d, "", "ла"), _cap(tr)
+					],
+					"[b]%s[/b], %s. %s. [b]%s[/b] %s — и цепочка дотянулась." % [
+						nm, occ, _cap(tr), inf_nm,
+						_g(inf_d, "прошёл рядом", "прошла рядом")
+					],
+					"[b]%s[/b], %s. Не повезло оказаться рядом с [b]%s[/b]. %s." % [
+						nm, occ, inf_nm, _cap(tr)
+					],
 				]
+				txt += lines[randi() % lines.size()] + "\n"
 			else:
-				txt += "%s, %s — заражён. %s.\n" % [
-					Identity.full_name(d), d["occupation"], (d["trait"] as String).capitalize()
+				var lines := [
+					"[b]%s[/b], %s. Заражён%s — как именно, уже не узнать. %s." % [
+						nm, occ, _g(d, "", "а"), _cap(tr)
+					],
+					"[b]%s[/b], %s. %s. Подхватил%s вирус где-то в толпе." % [
+						nm, occ, _cap(tr), _g(d, "", "а")
+					],
 				]
+				txt += lines[randi() % lines.size()] + "\n"
 			shown += 1
 
 	_story_text.text = txt

@@ -2,67 +2,70 @@ extends RefCounted
 class_name Identity
 
 const MALE_NAMES = [
-	"Alexander", "Alexei", "Andrei", "Anton", "Artem", "Boris", "Vadim", "Vasily",
-	"Viktor", "Vitaly", "Vladimir", "Vladislav", "Vyacheslav", "Gennady", "Georgy",
-	"Grigory", "Dmitry", "Evgeny", "Ivan", "Igor", "Ilya", "Kirill", "Konstantin",
-	"Leonid", "Maxim", "Mikhail", "Nikita", "Nikolai", "Oleg", "Pavel", "Pyotr",
-	"Roman", "Ruslan", "Sergei", "Stepan", "Timur", "Fyodor", "Filipp", "Yuri", "Yakov",
-	"Denis", "Yegor", "Zakhar", "Lev", "Mark", "Matvei", "Semyon", "Tikhon", "Eduard", "Anatoly"
+	"Александр", "Алексей", "Андрей", "Антон", "Артём", "Борис", "Вадим", "Василий",
+	"Виктор", "Виталий", "Владимир", "Владислав", "Вячеслав", "Геннадий", "Георгий",
+	"Григорий", "Дмитрий", "Евгений", "Иван", "Игорь", "Илья", "Кирилл", "Константин",
+	"Леонид", "Максим", "Михаил", "Никита", "Николай", "Олег", "Павел", "Пётр",
+	"Роман", "Руслан", "Сергей", "Степан", "Тимур", "Фёдор", "Филипп", "Юрий", "Яков",
+	"Денис", "Егор", "Захар", "Лев", "Марк", "Матвей", "Семён", "Тихон", "Эдуард", "Анатолий"
 ]
 
 const FEMALE_NAMES = [
-	"Alexandra", "Alina", "Alisa", "Anastasia", "Anna", "Valentina", "Valeria",
-	"Vera", "Viktoria", "Galina", "Daria", "Ekaterina", "Elena", "Zhanna", "Zinaida",
-	"Irina", "Karina", "Kristina", "Ksenia", "Larisa", "Lyudmila", "Margarita",
-	"Marina", "Maria", "Nadezhda", "Natalia", "Nina", "Oksana", "Olga", "Polina",
-	"Svetlana", "Sofia", "Tamara", "Tatiana", "Yulia", "Yana", "Diana", "Lilia",
-	"Regina", "Elina"
+	"Александра", "Алина", "Алиса", "Анастасия", "Анна", "Валентина", "Валерия",
+	"Вера", "Виктория", "Галина", "Дарья", "Екатерина", "Елена", "Жанна", "Зинаида",
+	"Ирина", "Карина", "Кристина", "Ксения", "Лариса", "Людмила", "Маргарита",
+	"Марина", "Мария", "Надежда", "Наталья", "Нина", "Оксана", "Ольга", "Полина",
+	"Светлана", "София", "Тамара", "Татьяна", "Юлия", "Яна", "Диана", "Лилия",
+	"Регина", "Элина"
 ]
 
 const LAST_NAMES_M = [
-	"Ivanov", "Smirnov", "Kuznetsov", "Popov", "Vasiliev", "Petrov", "Sokolov",
-	"Mikhailov", "Novikov", "Fedorov", "Morozov", "Volkov", "Alekseev", "Lebedev",
-	"Semenov", "Egorov", "Pavlov", "Kozlov", "Stepanov", "Nikolaev", "Orlov",
-	"Andreev", "Makarov", "Nikitin", "Zakharov", "Zaitsev", "Solovyov", "Borisov",
-	"Yakovlev", "Grigoryev", "Romanov", "Vorobyov", "Sergeev", "Kuzmin", "Frolov",
-	"Aleksandrov", "Dmitriev", "Korolyov", "Gusev", "Tikhonov", "Fomin", "Chernov",
-	"Atamanov", "Belyaev", "Gromov", "Davydov", "Ershov", "Zhukov", "Zubov", "Kalinin"
+	"Иванов", "Смирнов", "Кузнецов", "Попов", "Васильев", "Петров", "Соколов",
+	"Михайлов", "Новиков", "Фёдоров", "Морозов", "Волков", "Алексеев", "Лебедев",
+	"Семёнов", "Егоров", "Павлов", "Козлов", "Степанов", "Николаев", "Орлов",
+	"Андреев", "Макаров", "Никитин", "Захаров", "Зайцев", "Соловьёв", "Борисов",
+	"Яковлев", "Григорьев", "Романов", "Воробьёв", "Сергеев", "Кузьмин", "Фролов",
+	"Александров", "Дмитриев", "Королёв", "Гусев", "Тихонов", "Фомин", "Чернов",
+	"Атаманов", "Беляев", "Громов", "Давыдов", "Ершов", "Жуков", "Зубов", "Калинин"
 ]
 
 const LAST_NAMES_F = [
-	"Ivanova", "Smirnova", "Kuznetsova", "Popova", "Vasilieva", "Petrova", "Sokolova",
-	"Mikhailova", "Novikova", "Fedorova", "Morozova", "Volkova", "Alekseeva", "Lebedeva",
-	"Semenova", "Egorova", "Pavlova", "Kozlova", "Stepanova", "Nikolaeva", "Orlova",
-	"Andreeva", "Makarova", "Nikitina", "Zakharova", "Zaitseva", "Solovyova", "Borisova",
-	"Yakovleva", "Grigoryeva", "Romanova", "Vorobyova", "Sergeeva", "Kuzmina", "Frolova",
-	"Aleksandrova", "Dmitrieva", "Korolyova", "Guseva", "Tikhonova", "Fomina", "Chernova",
-	"Atamanova", "Belyaeva", "Gromova", "Davydova", "Ershova", "Zhukova", "Zubova", "Kalinina"
+	"Иванова", "Смирнова", "Кузнецова", "Попова", "Васильева", "Петрова", "Соколова",
+	"Михайлова", "Новикова", "Фёдорова", "Морозова", "Волкова", "Алексеева", "Лебедева",
+	"Семёнова", "Егорова", "Павлова", "Козлова", "Степанова", "Николаева", "Орлова",
+	"Андреева", "Макарова", "Никитина", "Захарова", "Зайцева", "Соловьёва", "Борисова",
+	"Яковлева", "Григорьева", "Романова", "Воробьёва", "Сергеева", "Кузьмина", "Фролова",
+	"Александрова", "Дмитриева", "Королёва", "Гусева", "Тихонова", "Фомина", "Чернова",
+	"Атаманова", "Беляева", "Громова", "Давыдова", "Ершова", "Жукова", "Зубова", "Калинина"
 ]
 
 const OCCUPATIONS = [
-	"bus driver", "accountant", "teacher", "doctor", "salesperson", "programmer",
-	"builder", "cook", "security guard", "manager", "engineer", "nurse", "lawyer",
-	"journalist", "plumber", "electrician", "warehouse worker", "dispatcher", "agronomist", "retiree",
-	"student", "unemployed", "realtor", "notary", "pharmacist", "truck driver",
-	"waiter", "hairdresser", "welder", "call center operator", "librarian",
-	"mail carrier", "taxi driver", "janitor", "architect", "designer", "photographer",
-	"psychologist", "social worker", "cashier", "installer", "foreman", "real estate agent",
-	"tutor", "fitness trainer", "sysadmin", "veterinarian", "logistician",
-	"animator", "official"
+	"водитель автобуса", "бухгалтер", "учитель", "врач", "продавец", "программист",
+	"строитель", "повар", "охранник", "менеджер", "инженер", "медсестра", "юрист",
+	"слесарь", "электрик", "кладовщик", "диспетчер", "пенсионер",
+	"студент", "безработный", "риелтор", "нотариус", "фармацевт", "дальнобойщик",
+	"официант", "парикмахер", "сварщик", "библиотекарь",
+	"почтальон", "таксист", "уборщик", "архитектор", "дизайнер", "фотограф",
+	"психолог", "соцработник", "кассир", "монтажник", "прораб",
+	"репетитор", "системный администратор", "ветеринар", "логист",
+	"аниматор", "чиновник"
 ]
 
 const TRAITS = [
-	"loves cats", "binge-watches TV shows", "hates Mondays",
-	"only drinks instant coffee", "always 5 minutes late",
-	"collects fridge magnets", "afraid of heights", "sends voice messages",
-	"dreams of a country house", "forgets to turn off the iron", "listens to radio in the car",
-	"never eats soup", "believes in horoscopes", "reads mysteries before bed",
-	"wants to lose weight since January", "proud of their car"
+	"любит кошек", "смотрит сериалы до трёх ночи", "ненавидит понедельники",
+	"пьёт только растворимый кофе", "всегда опаздывает на пять минут",
+	"коллекционирует магниты с курортов", "боится высоты", "отправляет голосовые в мессенджерах",
+	"мечтает о даче", "никогда не выключает утюг", "слушает радио в машине",
+	"никогда не ест первое", "верит в гороскопы", "читает детективы перед сном",
+	"хочет похудеть с января", "гордится своей машиной",
+	"переживает за ипотеку", "боится начальника", "забывает дни рождения родственников",
+	"ест на работе за компьютером", "всегда берёт сдачу монетами",
+	"носит запасной пакет в кармане", "записывается к врачу и не приходит"
 ]
 
 const LOCATIONS = [
-	"near the mall entrance", "in the parking lot", "in the alley", "at the bus stop", "in the square",
-	"by the fountain", "in the archway", "at the kiosk", "on the stairs", "near the bench"
+	"у входа в ТЦ", "на парковке", "в переулке", "у остановки", "на площади",
+	"у фонтана", "в подворотне", "у киоска", "на лестнице", "у скамейки"
 ]
 
 
@@ -79,9 +82,9 @@ static func generate(rng: RandomNumberGenerator, archetype: int, is_cop: bool) -
 
 	var age = rng.randi_range(20, 55)
 	if archetype == 1:
-		age = rng.randi_range(8, 15)
+		age = rng.randi_range(8, 14)
 	elif archetype == 2:
-		age = rng.randi_range(60, 80)
+		age = rng.randi_range(62, 80)
 	elif archetype == 3:
 		age = rng.randi_range(25, 45)
 	if is_cop:
@@ -89,7 +92,7 @@ static func generate(rng: RandomNumberGenerator, archetype: int, is_cop: bool) -
 
 	var occupation = ""
 	if is_cop:
-		occupation = "police officer"
+		occupation = "полицейский"
 	else:
 		occupation = OCCUPATIONS[rng.randi() % OCCUPATIONS.size()]
 
@@ -103,4 +106,11 @@ static func full_name(d: Dictionary) -> String:
 
 
 static func age_str(d: Dictionary) -> String:
-	return "%d years" % int(d["age"])
+	var a: int = d["age"]
+	var m10 := a % 10
+	var m100 := a % 100
+	if m10 == 1 and m100 != 11:
+		return "%d год" % a
+	elif m10 >= 2 and m10 <= 4 and not (m100 >= 12 and m100 <= 14):
+		return "%d года" % a
+	return "%d лет" % a

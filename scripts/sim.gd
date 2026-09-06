@@ -55,8 +55,8 @@ var _grab_wrong_count := 0
 var _throw_cd := 0.0
 
 const _QTE_KEYS := [
-	["W", KEY_W], ["A", KEY_A], ["S", KEY_S], ["D", KEY_D],
 	["E", KEY_E], ["F", KEY_F], ["Q", KEY_Q], ["G", KEY_G],
+	["Z", KEY_Z], ["X", KEY_X], ["C", KEY_C], ["V", KEY_V],
 ]
 
 # --- Состояние забега ---
@@ -328,14 +328,14 @@ func _update_player(delta: float) -> void:
 	_throw_cd         = maxf(0.0, _throw_cd - delta)
 	horde_target_life = maxf(0.0, horde_target_life - delta)
 
-	var mouse_world := _mouse_world_pos()
-	var to_mouse    := mouse_world - p_pos
-	var dist_m      := to_mouse.length()
-	var dir         := Vector2.ZERO
-	if dist_m > 0.25:
-		dir = to_mouse.normalized()
-		if dist_m < 1.5:
-			dir *= dist_m / 1.5  # притормаживаем рядом с курсором
+	# WASD-движение; мышь задаёт только направление взгляда
+	var dir := Vector2.ZERO
+	if Input.is_key_pressed(KEY_W): dir.y -= 1.0
+	if Input.is_key_pressed(KEY_S): dir.y += 1.0
+	if Input.is_key_pressed(KEY_A): dir.x -= 1.0
+	if Input.is_key_pressed(KEY_D): dir.x += 1.0
+	if dir.length_squared() > 0.01:
+		dir = dir.normalized()
 
 	var speed := Tuning.PLAYER_SPRINT if sprinting else Tuning.PLAYER_WALK
 	if p_grab >= 0:
