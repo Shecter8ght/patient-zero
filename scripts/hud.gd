@@ -364,7 +364,7 @@ func _build_story_panel() -> void:
 
 func _build_story_text(result: int) -> void:
 	var txt := ""
-	var n   := sim.pos.size()
+	var n: int = sim.pos.size()
 
 	match result:
 		1: txt += "[color=#e84040][b]ГОРОД ПАЛ[/b][/color]\n"

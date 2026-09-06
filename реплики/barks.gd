@@ -1,5 +1,5 @@
 extends Node3D
-class_name BarkSystem
+# reference copy — class_name removed to avoid conflict with scripts/barks.gd
 ## Пузыри с репликами. Текст, без озвучки — тысяча строк стоит час работы,
 ## тысяча озвученных строк убьёт проект.
 ##

@@ -73,7 +73,7 @@ func _process(delta: float) -> void:
 	if _sim.horde_target_life > 0.0 and pfl == 0:
 		_horde_marker.visible  = true
 		_horde_marker.position = Vector3(_sim.horde_target.x, 0.15, _sim.horde_target.y)
-		var frac  := _sim.horde_target_life / Tuning.HORDE_CMD_DURATION
+		var frac: float = _sim.horde_target_life / Tuning.HORDE_CMD_DURATION
 		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.005)
 		if _horde_mat:
 			_horde_mat.albedo_color.a             = frac * (0.4 + 0.3 * pulse)

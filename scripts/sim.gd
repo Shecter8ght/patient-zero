@@ -869,7 +869,7 @@ func _tick_civilian(i: int, delta: float) -> void:
 
 	if panic[i] > 0.0:
 		panic[i] -= delta
-		var panic_spd := Tuning.CIV_PANIC * Tuning.ARCH_PANIC_MULT[archetype[i]]
+		var panic_spd: float = Tuning.CIV_PANIC * Tuning.ARCH_PANIC_MULT[archetype[i]]
 		if flee.length_squared() > 0.001:
 			vel[i] = vel[i].move_toward(flee.normalized() * panic_spd, Tuning.ACCEL * delta)
 		else:
@@ -922,8 +922,8 @@ func _nearest(from: Vector2, floor: int, want: int, max_dist: float) -> int:
 
 func _spawn_cops(delta: float) -> void:
 	var esc_idx  := clampi(escalation_level - 1, 0, Tuning.ESC_SPAWN_MULTS.size() - 1)
-	var spawn_cd := Tuning.COP_SPAWN_INTERVAL * (Tuning.ESC_SPAWN_MULTS[esc_idx] if escalation_level > 0 else 1.0)
-	var cop_max  := Tuning.ESC_COP_MAXES[esc_idx] if escalation_level > 0 else Tuning.COP_MAX
+	var spawn_cd: float = Tuning.COP_SPAWN_INTERVAL * (Tuning.ESC_SPAWN_MULTS[esc_idx] if escalation_level > 0 else 1.0)
+	var cop_max: int  = Tuning.ESC_COP_MAXES[esc_idx] if escalation_level > 0 else Tuning.COP_MAX
 	if suspicion < Tuning.SUSP_COP_SPAWN or cop_count >= cop_max:
 		return
 	cop_spawn_t -= delta
