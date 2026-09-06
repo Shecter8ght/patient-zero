@@ -9,6 +9,7 @@ var _bldg_floor_ids:  PackedInt32Array
 var _bldg_wall_mats:  Array   # Array[StandardMaterial3D]
 var _bldg_roof_mats:  Array   # Array[StandardMaterial3D]
 var _bldg_rects:      Array   # Array[Rect2]
+var _evac_meshes: Array[MeshInstance3D] = []
 
 const FADE_DIST   := 16.0  # дистанция начала затухания (метры)
 const ALPHA_NEAR  := 0.12  # прозрачность у стены/крыши
@@ -63,6 +64,23 @@ func _process(delta: float) -> void:
 
 		_apply_alpha(_bldg_wall_mats[i], wall_target, delta)
 		_apply_alpha(_bldg_roof_mats[i], roof_target, delta)
+
+	# Точки эвакуации
+	var active_evac: Array = _sim.evac_points
+	for mi_idx in _evac_meshes.size():
+		_evac_meshes[mi_idx].visible = false
+	for ep_idx in active_evac.size():
+		if ep_idx >= _evac_meshes.size():
+			_evac_meshes.append(_make_evac_mesh())
+		var mi: MeshInstance3D = _evac_meshes[ep_idx]
+		var ep: Dictionary     = active_evac[ep_idx]
+		mi.visible  = (pfl == 0)
+		mi.position = Vector3(ep["pos"].x, 0.15, ep["pos"].y)
+		var pulse := 0.7 + 0.3 * sin(Time.get_ticks_msec() * 0.003)
+		var mat := mi.get_surface_override_material(0) as StandardMaterial3D
+		if mat:
+			mat.albedo_color = Color(0.1, 1.0, 0.3, pulse)
+			mat.emission     = Color(0.0, 0.8, 0.2) * pulse
 
 
 # ---------------------------------------------------------------- обычные здания
@@ -284,6 +302,23 @@ func _render_transition_markers() -> void:
 		var bew := Tuning.BUILDING_DOOR_W * 0.5
 		_add_marker(self, Rect2(dp.x - bew, dp.y - 0.3, bew * 2, 0.5), 0.05,
 			Color(0.15, 0.90, 0.40))
+
+
+func _make_evac_mesh() -> MeshInstance3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color            = Color(0.1, 1.0, 0.3, 0.8)
+	mat.transparency            = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.emission_enabled        = true
+	mat.emission                = Color(0.0, 0.8, 0.2)
+	mat.emission_energy_multiplier = 2.0
+	mat.roughness               = 0.3
+	var box := BoxMesh.new()
+	box.size = Vector3(6.0, 0.25, 6.0)
+	var mi  := MeshInstance3D.new()
+	mi.mesh = box
+	mi.set_surface_override_material(0, mat)
+	add_child(mi)
+	return mi
 
 
 func _add_marker(parent: Node3D, r: Rect2, y: float, color: Color) -> void:

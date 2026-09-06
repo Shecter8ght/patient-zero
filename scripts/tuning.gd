@@ -117,3 +117,12 @@ const ARCH_FREQ       := [0.60, 0.10, 0.15, 0.10, 0.05]
 
 const JOURNALIST_PHOTO_TIME := 3.0   # сек до срабатывания фото
 const SUSP_JOURNALIST       := 28.0  # подозрение от фото
+
+# --- Эвакуация ---
+const EVAC_FIRST_TIME  := 60.0   # сек до первой точки эвакуации
+const EVAC_INTERVAL    := 40.0   # сек между появлением новых точек
+const EVAC_RADIUS      := 2.5    # радиус посадки в автобус
+const EVAC_PULL_RANGE  := 30.0   # дальность притяжения к точке
+const EVAC_PULL_SPEED  := 0.6    # скорость движения к эвакуации (м/с)
+const EVAC_POINT_LIFE  := 35.0   # сек до отъезда автобуса
+const EVAC_LOSE_AT     := 30     # поражение если столько убежало

@@ -101,7 +101,7 @@ func _on_restart_pressed() -> void:
 
 
 func _on_stats(healthy: int, infected: int, latent: int, dead: int,
-		cops: int, suspicion: float, arrest_prog: float, qte_key: String) -> void:
+		cops: int, suspicion: float, arrest_prog: float, qte_key: String, evac_count: int) -> void:
 
 	if arrest_prog > 0.0:
 		bar.value = arrest_prog * 100.0
@@ -136,11 +136,15 @@ func _on_stats(healthy: int, infected: int, latent: int, dead: int,
 		var pct   := 0
 		if total > 0:
 			pct = roundi(float(infected + dead) / float(total) * 100.0)
+		var evac_left := Tuning.EVAC_LOSE_AT - evac_count
+		var evac_warn := "(!)" if evac_count > Tuning.EVAC_LOSE_AT * 0.6 else ""
 		label.text = (
 			"Заражено: %d%%   Здоровых: %d   Инкуб: %d\n" +
 			"Мертвых: %d   Полиции: %d   Подозрение: %d\n" +
+			"Эвакуировалось: %d / %d %s\n" +
 			"ЛКМ — захват   Alt+Sprint — бросок   Esc — пауза"
-		) % [pct, healthy, latent, dead, cops, roundi(suspicion)]
+		) % [pct, healthy, latent, dead, cops, roundi(suspicion),
+			evac_count, Tuning.EVAC_LOSE_AT, evac_warn]
 
 		var st := bar.get_theme_stylebox("fill").duplicate() as StyleBoxFlat
 		if st:
@@ -156,7 +160,7 @@ func _on_finished(result: int, seconds: float) -> void:
 	qte_label.visible = false
 	qte_bg.visible    = false
 	label.text = (
-		"ГОРОД ПАЛ за %.0f сек" % seconds
-		if result == 1
-		else "ВЫЧИСЛЕН — конец"
+		"ГОРОД ПАЛ за %.0f сек" % seconds if result == 1
+		else ("ЭВАКУАЦИЯ — слишком много сбежало" if result == 3
+		else "ВЫЧИСЛЕН — конец")
 	)

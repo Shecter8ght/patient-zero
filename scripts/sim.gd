@@ -64,10 +64,14 @@ var cop_count     := 0
 var cop_spawn_t   := 0.0
 var finished      := 0   # 0=идёт, 1=победа, 2=поражение
 
+var evac_timer  := 0.0
+var evac_count  := 0
+var evac_points: Array[Dictionary] = []
+
 var _grid := {}
 
 signal run_finished(result: int, seconds: float)
-signal stats_changed(healthy: int, infected: int, latent: int, dead: int, cops: int, suspicion: float, arrest_prog: float, qte_key: String)
+signal stats_changed(healthy: int, infected: int, latent: int, dead: int, cops: int, suspicion: float, arrest_prog: float, qte_key: String, evac_count: int)
 signal shot_fired(from_pos: Vector2, to_pos: Vector2)
 
 
@@ -169,6 +173,9 @@ func reset_run() -> void:
 	cop_count        = 0
 	cop_spawn_t      = 0.0
 	finished         = 0
+	evac_timer        = Tuning.EVAC_FIRST_TIME
+	evac_count        = 0
+	evac_points.clear()
 
 
 func _physics_process(delta: float) -> void:
@@ -179,6 +186,7 @@ func _physics_process(delta: float) -> void:
 	_update_player(delta)
 	_update_agents(delta)
 	_spawn_cops(delta)
+	_tick_evac(delta)
 	suspicion = clampf(suspicion - Tuning.SUSP_DECAY * delta, 0.0, 100.0)
 
 
@@ -436,7 +444,7 @@ func _update_agents(delta: float) -> void:
 		qte_str = _grab_qte_str
 	else:
 		qte_str = ""
-	stats_changed.emit(healthy, infected, latent, dead, cops, suspicion, arrest_prog, qte_str)
+	stats_changed.emit(healthy, infected, latent, dead, cops, suspicion, arrest_prog, qte_str, evac_count)
 	if pos.size() > 0 and float(got) / float(pos.size()) >= Tuning.WIN_RATIO:
 		finished = 1
 		run_finished.emit(1, elapsed)
@@ -571,6 +579,29 @@ func _tick_civilian(i: int, delta: float) -> void:
 		elif not near_grab:
 			photo_timer[i] = 0.0
 
+	# Эвакуация: тянет здоровых без паники на улице к точке
+	var going_to_evac := false
+	if state[i] == S.HEALTHY and panic[i] <= 0.0 and floor_idx[i] == 0 and not evac_points.is_empty():
+		var nearest_evac := Vector2.ZERO
+		var nearest_d    := INF
+		for ep in evac_points:
+			var d2 := pos[i].distance_squared_to(ep["pos"])
+			if d2 < nearest_d:
+				nearest_d    = d2
+				nearest_evac = ep["pos"]
+		if nearest_d < Tuning.EVAC_PULL_RANGE * Tuning.EVAC_PULL_RANGE:
+			var to_evac   := nearest_evac - pos[i]
+			var dist_evac := to_evac.length()
+			if dist_evac < Tuning.EVAC_RADIUS:
+				state[i]    = S.DEAD
+				evac_count += 1
+				if evac_count >= Tuning.EVAC_LOSE_AT and finished == 0:
+					finished = 3
+					run_finished.emit(3, elapsed)
+				return
+			going_to_evac = true
+			vel[i] = vel[i].lerp((to_evac / dist_evac) * Tuning.EVAC_PULL_SPEED, 0.15)
+
 	var flee   := Vector2.ZERO
 	var threats := 0
 	var r2     := Tuning.PANIC_RADIUS * Tuning.PANIC_RADIUS
@@ -612,7 +643,7 @@ func _tick_civilian(i: int, delta: float) -> void:
 			vel[i] = vel[i].move_toward(vel[i].normalized() * panic_spd, Tuning.ACCEL * delta)
 	elif p_grab == i:
 		vel[i] = vel[i].move_toward(Vector2.ZERO, Tuning.KNOCKBACK_DECAY * delta)
-	else:
+	elif not going_to_evac:
 		_wander(i, delta, Tuning.CIV_WALK)
 
 
@@ -670,6 +701,36 @@ func _spawn_cops(delta: float) -> void:
 			alert_target[i] = -1
 			cop_count       += 1
 			return
+
+
+func _tick_evac(delta: float) -> void:
+	var i := evac_points.size() - 1
+	while i >= 0:
+		evac_points[i]["life"] -= delta
+		if evac_points[i]["life"] <= 0.0:
+			evac_points.remove_at(i)
+		i -= 1
+
+	evac_timer -= delta
+	if evac_timer > 0.0:
+		return
+	evac_timer = Tuning.EVAC_INTERVAL
+
+	const EVAC_SPOTS: Array = [
+		Vector2(0.0,  -62.0),
+		Vector2(62.0,   0.0),
+		Vector2(0.0,   62.0),
+		Vector2(-62.0,  0.0),
+	]
+	for spot in EVAC_SPOTS:
+		var taken := false
+		for ep in evac_points:
+			if (ep["pos"] as Vector2).distance_squared_to(spot) < 4.0:
+				taken = true
+				break
+		if not taken:
+			evac_points.append({"pos": spot, "life": Tuning.EVAC_POINT_LIFE})
+			break
 
 
 func _clamp_world(p: Vector2) -> Vector2:
