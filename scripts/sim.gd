@@ -255,7 +255,8 @@ func reset_run() -> void:
 		var r := randf()
 		if r < Tuning.SURV_PANICKER_CHANCE:
 			survivor_role[i] = Tuning.SURV_PANICKER
-			panic[i]         = 9.0  # всегда паникует
+			# panic НЕ выставляем сразу — паникёр спокоен до первого триггера,
+			# но после него уже никогда не успокаивается (в _tick_civilian)
 		elif r < Tuning.SURV_PANICKER_CHANCE + Tuning.SURV_HIDER_CHANCE:
 			survivor_role[i] = Tuning.SURV_HIDER
 		elif r < Tuning.SURV_PANICKER_CHANCE + Tuning.SURV_HIDER_CHANCE + Tuning.SURV_ORGANIZER_CHANCE:
