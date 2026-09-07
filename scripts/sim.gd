@@ -58,6 +58,7 @@ var _player_knock  := Vector2.ZERO  # импульс отброса при ат�
 
 # --- Бросок ---
 var _throw_cd := 0.0
+var _grab_cd  := 0.0   # кулдаун после разрыва — не прыгать на соседа
 
 const _QTE_ALL  := [["Q",KEY_Q],["W",KEY_W],["E",KEY_E],["A",KEY_A],["S",KEY_S],["D",KEY_D]]
 const _QTE_CIV  := [["Q",KEY_Q],["E",KEY_E],["A",KEY_A]]
@@ -287,6 +288,7 @@ func reset_run() -> void:
 	_resist_gather = 0.0
 	_player_knock  = Vector2.ZERO
 	_throw_cd      = 0.0
+	_grab_cd       = 0.0
 	suspicion         = 0.0
 	elapsed          = 0.0
 	cop_count        = 0
@@ -405,6 +407,7 @@ func _update_player(delta: float) -> void:
 		return
 
 	_throw_cd         = maxf(0.0, _throw_cd - delta)
+	_grab_cd          = maxf(0.0, _grab_cd  - delta)
 
 	# FOLLOW: цель = позиция игрока, обновляется каждый кадр
 	if horde_cmd == HC_FOLLOW:
@@ -454,7 +457,7 @@ func _update_player(delta: float) -> void:
 			p_floor_cd = Tuning.FLOOR_CD
 
 	# Начать захват
-	if holding and p_grab < 0:
+	if holding and p_grab < 0 and _grab_cd <= 0.0:
 		var best   := -1
 		var best_d := grab_range_eff * grab_range_eff
 		for i in _neighbors(p_pos, p_floor):
@@ -530,6 +533,7 @@ func _break_grab(scream: bool) -> void:
 	_slider_pos    = 0.5
 	_slider_dir    = 1.0
 	_resist_gather = 0.0
+	_grab_cd       = 0.45   # 0.45с до следующего захвата — не прыгаем в толпе
 
 
 func _resolve_slider() -> void:
