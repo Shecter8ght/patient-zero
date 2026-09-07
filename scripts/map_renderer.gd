@@ -8,6 +8,7 @@ const HOUSE_MODEL = preload("res://assets/models/buildings/building_house_a.glb"
 const BUS_MODEL = preload("res://assets/models/vehicles/evac_bus.glb")
 
 var _evac_buses: Array[Node3D] = []
+var _route_bus_nodes: Array[Node3D] = []
 const MALL_SHELL = preload("res://assets/models/mall/mall_shell.glb")
 const MALL_FLOOR = preload("res://assets/models/mall/mall_floor.glb")
 const MALL_KIOSKS = [preload("res://assets/models/mall/mall_kiosk_food.glb"), preload("res://assets/models/mall/mall_kiosk_clothes.glb"), preload("res://assets/models/mall/mall_kiosk_electronics.glb")]
@@ -97,16 +98,42 @@ func _process(delta: float) -> void:
 		_apply_alpha(_bldg_roof_mats[i], roof_target, delta)
 
 	# Маркер орды
-	if _sim.horde_target_life > 0.0 and pfl == 0:
+	if _sim.horde_target_life > 0.0 and _sim.horde_cmd != _sim.HC_NONE:
 		_horde_marker.visible  = true
 		_horde_marker.position = Vector3(_sim.horde_target.x, 0.15, _sim.horde_target.y)
-		var frac: float = _sim.horde_target_life / Tuning.HORDE_CMD_DURATION
 		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.005)
 		if _horde_mat:
-			_horde_mat.albedo_color.a             = frac * (0.4 + 0.3 * pulse)
+			match _sim.horde_cmd:
+				_sim.HC_FOLLOW:
+					_horde_mat.albedo_color = Color(0.3, 0.8, 1.0, 0.55 + 0.2 * pulse)   # голубой
+					_horde_mat.emission    = Color(0.1, 0.5, 1.0)
+				_sim.HC_HOLD:
+					_horde_mat.albedo_color = Color(0.2, 1.0, 0.5, 0.6)                   # зелёный, статичный
+					_horde_mat.emission    = Color(0.0, 0.8, 0.3)
+				_sim.HC_ATTACK:
+					_horde_mat.albedo_color = Color(1.0, 0.2, 0.1, 0.5 + 0.3 * pulse)    # красный
+					_horde_mat.emission    = Color(1.0, 0.1, 0.0)
+				_:  # HC_MOVE
+					_horde_mat.albedo_color = Color(1.0, 0.85, 0.2, 0.4 + 0.3 * pulse)   # жёлтый
+					_horde_mat.emission    = Color(1.0, 0.6, 0.0)
 			_horde_mat.emission_energy_multiplier = 1.5 + 2.0 * pulse
 	else:
 		_horde_marker.visible = false
+
+	# Маршрутные автобусы (городские маршруты)
+	var rbuses: Array = _sim.route_buses
+	while _route_bus_nodes.size() < rbuses.size():
+		var rbn := BUS_MODEL.instantiate() as Node3D
+		rbn.name = "RouteBus%d" % _route_bus_nodes.size()
+		add_child(rbn)
+		_route_bus_nodes.append(rbn)
+	for ri in rbuses.size():
+		var rb: Dictionary = rbuses[ri]
+		var rbn: Node3D    = _route_bus_nodes[ri]
+		var rbp: Vector2   = rb["pos"]
+		rbn.position  = Vector3(rbp.x, 0.0, rbp.y)
+		rbn.rotation.y = -float(rb["vel_angle"])
+		rbn.visible   = (pfl == 0)
 
 	# Точки эвакуации
 	var active_evac: Array = _sim.evac_points
@@ -162,11 +189,17 @@ func _render_city_building(entry: Dictionary) -> bool:
 	add_child(model)
 	model.position = Vector3(r.get_center().x, 0, r.get_center().y)
 	var walls := model.find_child("Walls", true, false) as MeshInstance3D
-	var roof := model.find_child("Roof", true, false) as MeshInstance3D
+	var roof  := model.find_child("Roof",  true, false) as MeshInstance3D
+	if walls == null or roof == null:
+		return false
 	var wall_mat := walls.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
-	var roof_mat := roof.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
-	walls.set_surface_override_material(0, wall_mat)
-	roof.set_surface_override_material(0, roof_mat)
+	var roof_mat := roof.mesh.surface_get_material(0).duplicate()  as StandardMaterial3D
+	if wall_mat == null or roof_mat == null:
+		return false
+	for s in walls.mesh.get_surface_count():
+		walls.set_surface_override_material(s, wall_mat)
+	for s in roof.mesh.get_surface_count():
+		roof.set_surface_override_material(s, roof_mat)
 	_bldg_floor_ids.append(fid)
 	_bldg_wall_mats.append(wall_mat)
 	_bldg_roof_mats.append(roof_mat)
@@ -182,11 +215,13 @@ func _render_house(entry: Dictionary) -> void:
 	house.position = Vector3(r.get_center().x, 0, r.get_center().y)
 	house.scale = Vector3(r.size.x / 9.0, 1.0, r.size.y / 7.5)
 	var walls := house.find_child("Walls", true, false) as MeshInstance3D
-	var roof := house.find_child("Roof", true, false) as MeshInstance3D
+	var roof  := house.find_child("Roof",  true, false) as MeshInstance3D
 	var wall_mat := walls.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
-	var roof_mat := roof.mesh.surface_get_material(0).duplicate() as StandardMaterial3D
-	walls.set_surface_override_material(0, wall_mat)
-	roof.set_surface_override_material(0, roof_mat)
+	var roof_mat := roof.mesh.surface_get_material(0).duplicate()  as StandardMaterial3D
+	for s in walls.mesh.get_surface_count():
+		walls.set_surface_override_material(s, wall_mat)
+	for s in roof.mesh.get_surface_count():
+		roof.set_surface_override_material(s, roof_mat)
 	_bldg_floor_ids.append(entry["floor_id"])
 	_bldg_wall_mats.append(wall_mat)
 	_bldg_roof_mats.append(roof_mat)

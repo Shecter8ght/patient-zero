@@ -17,6 +17,9 @@ var _story_panel:  Control
 var _story_scroll: ScrollContainer
 var _story_text:   RichTextLabel
 
+var _grab_panel:  Control
+var _grab_cursor: ColorRect
+
 
 func _ready() -> void:
 	sim   = get_node(sim_path)
@@ -58,6 +61,7 @@ func _ready() -> void:
 	_build_mut_panel()
 	_build_headline_panel()
 	_build_story_panel()
+	_build_grab_slider()
 
 	sim.stats_changed.connect(_on_stats)
 	sim.run_finished.connect(_on_finished)
@@ -134,15 +138,6 @@ func _on_stats(healthy: int, infected: int, latent: int, dead: int,
 		qte_label.visible = false
 		qte_bg.visible    = false
 
-		# Захват — показываем QTE клавишу в другом цвете
-		if qte_key != "":
-			qte_label.add_theme_color_override("font_color", Color(1.0, 0.80, 0.10))
-			qte_label.text    = qte_key
-			qte_label.visible = true
-			qte_bg.visible    = true
-		else:
-			qte_label.add_theme_color_override("font_color", Color(1.0, 0.18, 0.18))
-
 		bar.value = suspicion
 
 		var total := healthy + infected + dead
@@ -162,7 +157,7 @@ func _on_stats(healthy: int, infected: int, latent: int, dead: int,
 					nearest_d   = d2
 					nearest_pos = ep["pos"]
 			var dist_m := sqrt(nearest_d)
-			var dir    := nearest_pos - sim.p_pos
+			var dir    : Vector2 = nearest_pos - sim.p_pos
 			var deg    := fmod(rad_to_deg(dir.angle()) + 360.0, 360.0)
 			var compass: String
 			if   deg < 22.5  or deg >= 337.5: compass = "→"
@@ -176,19 +171,26 @@ func _on_stats(healthy: int, infected: int, latent: int, dead: int,
 			bus_str = "   АВТОБУС %s %.0fм" % [compass, dist_m]
 
 		var horde_str := ""
-		if sim.horde_target_life > 0.0:
-			var ta: int = sim.horde_target_agent
-			if ta >= 0 and (sim.state[ta] == sim.S.COP or sim.state[ta] == sim.S.HEALTHY):
-				var label_ta := "КОП" if sim.state[ta] == sim.S.COP else "ЦЕЛЬ"
-				horde_str = "\n> ОРДА → %s (%.0f сек)" % [label_ta, sim.horde_target_life]
-			else:
-				horde_str = "\n> ОРДА — позиция (%.0f сек)" % sim.horde_target_life
+		match sim.horde_cmd:
+			sim.HC_FOLLOW:
+				horde_str = "\n> ОРДА — СЛЕДОВАТЬ [F — отмена]"
+			sim.HC_HOLD:
+				horde_str = "\n> ОРДА — УДЕРЖАНИЕ [H — отмена]"
+			sim.HC_ATTACK:
+				var ta: int = sim.horde_target_agent
+				var lbl := "КОП" if (ta >= 0 and sim.state[ta] == sim.S.COP) else "ЦЕЛЬ"
+				horde_str = "\n> ОРДА — АТАКА %s (%.0f сек)" % [lbl, sim.horde_target_life]
+			sim.HC_MOVE:
+				horde_str = "\n> ОРДА — ДВИЖЕНИЕ (%.0f сек)" % sim.horde_target_life
+		var mins := int(sim.elapsed) / 60
+		var secs := int(sim.elapsed) % 60
+		var time_str := "%d:%02d" % [mins, secs] if mins > 0 else "%d сек" % secs
 		label.text = (
-			"Заражено: %d%%   Активных: %d   Инкуб: %d\n" +
+			"Заражено: %d%%   Активных: %d   Инкуб: %d   [%s]\n" +
 			"Мертвых: %d   Полиции: %d   Подозрение: %d\n" +
 			"Эвакуировалось: %d / %d %s%s\n" +
-			"ЛКМ — захват   ПКМ — орда   Alt+Sprint — бросок   Esc — пауза"
-		) % [pct, infected, latent, dead, cops, roundi(suspicion),
+			"ЛКМ захват   ПКМ движение/атака   F следовать   H удержание   Esc пауза"
+		) % [pct, infected, latent, time_str, dead, cops, roundi(suspicion),
 			evac_count, Tuning.EVAC_LOSE_AT, evac_warn, bus_str] + horde_str
 
 		var st := bar.get_theme_stylebox("fill").duplicate() as StyleBoxFlat
@@ -319,9 +321,82 @@ func _build_headline_panel() -> void:
 
 
 func _on_escalation(level: int, headline: String) -> void:
-	_headline_label.text = "[ГАЗЕТА]  %s" % headline
+	if level == -2:
+		# Синтез мутаций
+		_headline_label.text = "★  %s  ★" % headline
+		_headline_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.65))
+		_headline_timer = Tuning.ESC_HEADLINE_DUR * 1.8
+	elif level == -1:
+		# Объявление эвакуации
+		_headline_label.text = "[!]  %s  [!]" % headline
+		_headline_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.1))
+		_headline_timer = Tuning.ESC_HEADLINE_DUR
+	else:
+		_headline_label.text = "[ГАЗЕТА]  %s" % headline
+		_headline_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.3))
+		_headline_timer = Tuning.ESC_HEADLINE_DUR
 	_headline_panel.visible = true
-	_headline_timer = Tuning.ESC_HEADLINE_DUR
+
+
+func _build_grab_slider() -> void:
+	const BAR_W := 360
+	const BAR_H := 36
+	_grab_panel = Control.new()
+	_grab_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_grab_panel.offset_left   = -BAR_W / 2
+	_grab_panel.offset_right  =  BAR_W / 2
+	_grab_panel.offset_top    = -200
+	_grab_panel.offset_bottom = -120
+	_grab_panel.visible       = false
+
+	# Фон
+	var bg := ColorRect.new()
+	bg.color = Color(0.04, 0.04, 0.07, 0.88)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.offset_top = -10; bg.offset_bottom = 40
+	_grab_panel.add_child(bg)
+
+	# Три зоны бара
+	var esc_w  := int(Tuning.SLIDER_ESCAPE_END  * BAR_W)
+	var inf_w  := int((Tuning.SLIDER_KILL_START - Tuning.SLIDER_ESCAPE_END) * BAR_W)
+	var kill_w := BAR_W - esc_w - inf_w
+	var zone_data := [
+		[0,             esc_w,  Color(0.70, 0.12, 0.12), "ВЫРВАЛСЯ"],
+		[esc_w,         inf_w,  Color(0.12, 0.60, 0.18), "ЗАРАЗИЛСЯ"],
+		[esc_w + inf_w, kill_w, Color(0.35, 0.08, 0.50), "УБИТ"],
+	]
+	for zd in zone_data:
+		var z := ColorRect.new()
+		z.color    = zd[2]
+		z.position = Vector2(zd[0], 0)
+		z.size     = Vector2(zd[1], BAR_H)
+		_grab_panel.add_child(z)
+		var lbl := Label.new()
+		lbl.text = zd[3]
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", 11)
+		lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+		lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
+		z.add_child(lbl)
+
+	# Курсор
+	_grab_cursor = ColorRect.new()
+	_grab_cursor.color    = Color(1, 1, 1, 0.95)
+	_grab_cursor.size     = Vector2(4, BAR_H + 8)
+	_grab_cursor.position = Vector2(BAR_W * 0.5 - 2, -4)
+	_grab_panel.add_child(_grab_cursor)
+
+	# Подсказка
+	var hint := Label.new()
+	hint.text = "ПРОБЕЛ — выбрать"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
+	hint.position = Vector2(0, BAR_H + 4)
+	hint.size     = Vector2(BAR_W, 20)
+	_grab_panel.add_child(hint)
+
+	$Root.add_child(_grab_panel)
 
 
 func _process(delta: float) -> void:
@@ -329,6 +404,12 @@ func _process(delta: float) -> void:
 		_headline_timer -= delta
 		if _headline_timer <= 0.0:
 			_headline_panel.visible = false
+
+	# Шкала захвата
+	var show_slider: bool = sim.p_grab >= 0 and not sim.p_being_arrested
+	_grab_panel.visible = show_slider
+	if show_slider and _grab_cursor:
+		_grab_cursor.position.x = sim._slider_pos * 356.0 - 2.0
 
 
 func _on_finished(result: int, seconds: float) -> void:
