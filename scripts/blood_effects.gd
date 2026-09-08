@@ -11,18 +11,18 @@ const FL_SPEED_KILL      := 2.8  # начальная скорость (м/с), 
 const FL_SPEED_BITE      := 1.3  # начальная скорость, укус
 const FL_DECAY           := 1.3  # вязкость: exp(-DECAY * dt), меньше = длиннее след
 const FL_TURB            := 1.2  # амплитуда случайного отклонения (рад/с)
-const FL_MARK_STEP       := 0.45 # метров между следами (> merge cell 0.35)
+const FL_MARK_STEP       := 0.62 # метров между следами (реже → жирнее мазок, не «ручеёк»)
 const FL_MIN_SPEED       := 0.04 # м/с — частица умирает
 const FL_MAX_AGE         := 10.0 # сек — принудительная смерть
 const FL_MAX_PARTICLES   := 200  # кольцевой буфер
-const FL_BRANCH_PROB     := 0.22 # вероятность ветвления
+const FL_BRANCH_PROB     := 0.10 # вероятность ветвления (реже — не паутина)
 const FL_BRANCH_ANGLE    := 0.85 # максимальный угол ответвления (рад)
 const FL_BRANCH_SPEED    := 0.60 # скорость ветки
-const FL_BRANCH_MAX      := 3    # максимум ветвлений
+const FL_BRANCH_MAX      := 2    # максимум ветвлений
 
-# Радиусы следов жидкости (меньше чем стандартные death/bite, но видимые)
-const FL_RADIUS_KILL := 0.58   # радиус следа на смерть (м)
-const FL_RADIUS_BITE := 0.42   # радиус следа на укус (м)
+# Радиусы следов жидкости — жирные потёки, а не тонкие линии
+const FL_RADIUS_KILL := 0.72   # радиус следа на смерть (м)
+const FL_RADIUS_BITE := 0.5    # радиус следа на укус (м)
 
 var sim: Node3D
 var pools: Array[Dictionary] = []
