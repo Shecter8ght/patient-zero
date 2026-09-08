@@ -19,11 +19,23 @@ const TI_POOLS := [2, 3, 4]        # крупные массы — смерть/
 
 const BATCH_SIZE := 128
 
+# Потёки-ручейки, расползающиеся от лужи
+const TENDRIL_PER_KILL := 5      # сколько ручейков от смертельной лужи
+const TENDRIL_PER_BITE := 1      # от укуса/выстрела
+const TENDRIL_SPEED_MIN := 0.4   # старт скорости (м/с)
+const TENDRIL_SPEED_MAX := 1.0
+const TENDRIL_DECAY := 0.5       # вязкость: exp(-DECAY*dt), меньше = длиннее потёк
+const TENDRIL_MIN_SPEED := 0.05  # ниже — ручеёк застывает
+const TENDRIL_STEP := 0.26       # метров между сегментами следа
+const TENDRIL_WANDER := 1.4      # рад/с случайного виляния
+const TENDRIL_MAX := 48          # потолок живых ручейков
+
 var sim: Node3D
 var batches: Array[Dictionary] = []   # {node, floor, ti, used}
 var _cur: Dictionary = {}             # "fl:ti" -> индекс текущего батча
 var materials: Array[ShaderMaterial] = []   # по одному на текстуру
 var drops: Array[Dictionary] = []
+var tendrils: Array[Dictionary] = []   # {pos, dir, floor, speed, acc, ti}
 var droplets: MultiMeshInstance3D
 var plane: PlaneMesh
 var blood_clock := 0.0
@@ -82,6 +94,7 @@ func clear() -> void:
 	batches.clear()
 	_cur.clear()
 	drops.clear()
+	tendrils.clear()
 	blood_clock = 0.0
 	visible_floor = -1
 	for m in materials:
@@ -115,21 +128,38 @@ func _get_batch(fl: int, ti: int) -> Dictionary:
 	return b
 
 
-## Штамп одной брызги: случайный поворот/масштаб/зеркало, тонируется шейдером.
-func _stamp(at: Vector2, fl: int, size: float, angle: float, ti: int, volume: float) -> void:
+## Штамп брызги с раздельным масштабом по осям (sx вдоль поворота, sz поперёк).
+func _stamp_ex(at: Vector2, fl: int, sx: float, sz: float, angle: float, ti: int, volume: float) -> void:
 	var b := _get_batch(fl, ti)
 	var slot: int = b.used
-	var sc := size * rng.randf_range(0.82, 1.28)
 	var mirror := 1.0 if rng.randf() > 0.5 else -1.0
-	var rot := angle + rng.randf_range(-0.4, 0.4)
 	var ground := MapGen.floor_y3d(fl) + (0.05 if fl == 0 else 0.012)
 	ground += float(b.used % 48) * 0.00002   # микро-смещение слоёв
-	var basis := Basis(Vector3.UP, rot).scaled(Vector3(sc * mirror, 1.0, sc))
+	var basis := Basis(Vector3.UP, angle).scaled(Vector3(sx * mirror, 1.0, sz))
 	var mm: MultiMesh = b.node.multimesh
 	mm.set_instance_transform(slot, Transform3D(basis, Vector3(at.x, ground, at.y)))
 	mm.set_instance_custom_data(slot, Color(blood_clock, rng.randf(), 0.0, volume))
 	b.used += 1
 	mm.visible_instance_count = b.used
+
+
+## Штамп одной брызги: случайный поворот/масштаб/зеркало, тонируется шейдером.
+func _stamp(at: Vector2, fl: int, size: float, angle: float, ti: int, volume: float) -> void:
+	var sc := size * rng.randf_range(0.82, 1.28)
+	_stamp_ex(at, fl, sc, sc, angle + rng.randf_range(-0.4, 0.4), ti, volume)
+
+
+## Спавн ручейков-потёков, расползающихся от точки.
+func _spawn_tendrils(at: Vector2, fl: int, amount: int) -> void:
+	for _t in amount:
+		if tendrils.size() >= TENDRIL_MAX:
+			break
+		var a := rng.randf() * TAU
+		tendrils.append({
+			"pos": at, "dir": Vector2(cos(a), sin(a)), "floor": fl,
+			"speed": rng.randf_range(TENDRIL_SPEED_MIN, TENDRIL_SPEED_MAX),
+			"acc": TENDRIL_STEP, "ti": TI_DROPS[rng.randi() % TI_DROPS.size()],
+		})
 
 
 func emit_hit(at: Vector2, fl: int, lethal: bool, direction: Vector2, behavior: int = -1) -> void:
@@ -142,10 +172,12 @@ func emit_hit(at: Vector2, fl: int, lethal: bool, direction: Vector2, behavior: 
 		_stamp(at, fl, rng.randf_range(1.15, 1.5), rng.randf() * TAU, TI_POOLS[rng.randi() % TI_POOLS.size()], 0.9)
 		for _s in 2:
 			_stamp(at, fl, rng.randf_range(0.7, 1.0), dir_angle, TI_DROPS[rng.randi() % TI_DROPS.size()], 0.8)
+		_spawn_tendrils(at, fl, TENDRIL_PER_KILL)
 	else:
 		# Укус/выстрел: одна брызга по направлению.
 		var size := 0.7 if kind == 2 else 0.5
 		_stamp(at, fl, size, dir_angle, TI_DROPS[rng.randi() % TI_DROPS.size()], 0.6)
+		_spawn_tendrils(at, fl, TENDRIL_PER_BITE)
 
 	# 3D-капли, оставляющие мелкие пятна при падении.
 	var ground := MapGen.floor_y3d(fl) + (0.05 if fl == 0 else 0.012)
@@ -198,6 +230,31 @@ func _process(delta: float) -> void:
 				bite_cooldowns[i] = Tuning.BLOOD_BITE_INTERVAL
 		else:
 			bite_cooldowns[i] = 0.0
+
+	# --- Ручейки-потёки: расползаются, вязко тормозят, оставляют вытянутый след ---
+	if delta > 0.0:
+		for i in range(tendrils.size() - 1, -1, -1):
+			var td: Dictionary = tendrils[i]
+			td.speed = float(td.speed) * exp(-TENDRIL_DECAY * delta)
+			if float(td.speed) < TENDRIL_MIN_SPEED:
+				tendrils.remove_at(i)
+				continue
+			td.dir = (td.dir as Vector2).rotated(rng.randf_range(-TENDRIL_WANDER, TENDRIL_WANDER) * delta)
+			var step: Vector2 = (td.dir as Vector2) * float(td.speed) * delta
+			var np: Vector2 = (td.pos as Vector2) + step
+			if MapGen.is_blocked(np, 0.05, td.floor):
+				tendrils.remove_at(i)   # упёрся в стену — застыл
+				continue
+			td.pos = np
+			td.acc = float(td.acc) + step.length()
+			if float(td.acc) >= TENDRIL_STEP:
+				td.acc = 0.0
+				# Вытянутый сегмент вдоль направления; тоньше по мере замедления.
+				var t := clampf(float(td.speed) / TENDRIL_SPEED_MAX, 0.0, 1.0)
+				var length := 0.22 + 0.16 * t
+				var width := 0.09 + 0.05 * t
+				_stamp_ex(np, td.floor, length, width,
+					-(td.dir as Vector2).angle(), td.ti, 0.55)
 
 	# --- Воздушные капли (3D баллистика) ---
 	var count := 0
