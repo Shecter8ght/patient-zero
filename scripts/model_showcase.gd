@@ -22,9 +22,6 @@ func _ready() -> void:
 	add_child(home)
 	home.position = Vector3(-6, 0, -4)
 	roof = home.find_child("Roof", true, false) as Node3D
-	var bus := (load("res://assets/models/vehicles/evac_bus.glb") as PackedScene).instantiate() as Node3D
-	add_child(bus)
-	bus.position = Vector3(4, 0, -3)
 	var plane := MeshInstance3D.new()
 	var mesh := PlaneMesh.new()
 	mesh.size = Vector2(50, 40)

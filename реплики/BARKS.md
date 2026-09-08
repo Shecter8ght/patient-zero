@@ -34,11 +34,11 @@
 
 ## Приоритеты категорий (для справки)
 
-100 evac_ready · 99 last_survivor · 98 grabbed · 95 hiding_spotted ·
+99 last_survivor · 98 grabbed · 95 hiding_spotted ·
 94 cop_shoot · 92 broke_free · 90 spot_infected · 88 turning ·
-86 cop_arrive · 85 evac_call · 82 horde_near · 80 spot_body ·
+86 cop_arrive · 82 horde_near · 80 spot_body ·
 78 militia · 75 lost_friend · 70 flee_panic · 65 suspect_neighbor ·
-55 barricade · 50 evac_repair · 40 hiding · 5 idle
+55 barricade · 40 hiding · 5 idle
 
 ## Подключение
 

@@ -6,5 +6,5 @@ func inspect() -> void:
 	for entry in map.building_data:
 		print(entry["floor_id"], " ", entry["rect"])
 	for p in [Vector2(0,-62),Vector2(62,0),Vector2(0,62),Vector2(-62,0)]:
-		print("EVAC ", p, " blocked ",map.is_blocked(p,2.5,0))
+		print("STREET ", p, " blocked ",map.is_blocked(p,2.5,0))
 	quit()

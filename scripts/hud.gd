@@ -577,11 +577,11 @@ func _build_story_text(result: int) -> void:
 
 		if sim.state[i] == 0:
 			var lines := [
-				"[color=#40e880][b]%s[/b], %s — выжил%s. Уехал%s первым%s автобусом. %s.[/color]" % [
-					nm, occ, _g(d, "", "а"), _g(d, "", "а"), _g(d, "", "ым"), _cap(tr)
+				"[color=#40e880][b]%s[/b], %s — выжил%s. Остал%s цел%s. %s.[/color]" % [
+					nm, occ, _g(d, "", "а"), _g(d, "ся", "ась"), _g(d, "", "а"), _cap(tr)
 				],
-				"[color=#40e880][b]%s[/b], %s. %s. Добрался%s до эвакуации — сам%s не верит.[/color]" % [
-					nm, occ, _cap(tr), _g(d, "", "ась"), _g(d, "", "а")
+				"[color=#40e880][b]%s[/b], %s. %s. Остал%s в живых — сам%s не верит.[/color]" % [
+					nm, occ, _cap(tr), _g(d, "ся", "ась"), _g(d, "", "а")
 				],
 				"[color=#40e880][b]%s[/b], %s — жив%s. %s. Будет рассказывать внукам.[/color]" % [
 					nm, occ, _g(d, "", "а"), _cap(tr)

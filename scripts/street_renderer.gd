@@ -44,7 +44,7 @@ func build(data: Dictionary) -> void:
 		index+=1
 	for stop: Dictionary in data["stops"]:
 		var label:=Label3D.new()
-		label.text="ЭВАКУАЦИЯ"
+		label.text="ОСТАНОВКА"
 		label.font_size=40
 		label.pixel_size=.009
 		label.position=Vector3(stop["pos"].x,2.9,stop["pos"].y)

@@ -116,54 +116,6 @@
         }
       }
     },
-    "evac_repair": {
-      "priority": 50,
-      "cooldown": 15.0,
-      "global_cooldown": 1.5,
-      "radius": 15,
-      "lines": {
-        "ru": {
-          "grim": ["Ещё немного.", "Двигатель почти живой.", "Мне нужно больше времени.", "Прикройте меня, я работаю.", "Руки трясутся.", "Ещё две ходки."],
-          "comic": ["Я вообще-то бухгалтер.", "В ютубе это выглядело проще.", "Кто вообще так собирает?", "Изолентой держится. Пока.", "Не мешайте, я почти инженер.", "Работает? Работает! Не трогайте."]
-        },
-        "en": {
-          "grim": ["Almost there.", "Engine's nearly alive.", "I need more time.", "Cover me, I'm working.", "My hands are shaking.", "Two more trips."],
-          "comic": ["I'm an accountant, actually.", "It looked easier on YouTube.", "Who builds these things?", "Holding it with tape. For now.", "Don't touch, I'm basically an engineer.", "It works? It works! Nobody move."]
-        }
-      }
-    },
-    "evac_call": {
-      "priority": 85,
-      "cooldown": 18.0,
-      "global_cooldown": 3.0,
-      "radius": 26,
-      "lines": {
-        "ru": {
-          "grim": ["Все ко мне! Сюда!", "У нас есть выход!", "Собираемся у машины!", "Кто живой — на голос!", "Мы уходим все вместе.", "Не отставайте!"],
-          "comic": ["Организованно, я сказал!", "Занимаем очередь!", "Мест хватит всем. Наверное.", "Товарищи, без давки!", "Я тут за главного, идёмте!", "Кто последний — тот закрывает."]
-        },
-        "en": {
-          "grim": ["Everyone to me! Here!", "We have a way out!", "Regroup at the vehicle!", "If you're alive, follow my voice!", "We leave together.", "Don't fall behind!"],
-          "comic": ["In an orderly fashion, I said!", "Form a queue!", "There's room for everyone. Probably.", "No pushing, comrades!", "I'm in charge here, let's go!", "Last one out gets the door."]
-        }
-      }
-    },
-    "evac_ready": {
-      "priority": 100,
-      "cooldown": 30.0,
-      "global_cooldown": 5.0,
-      "radius": 40,
-      "lines": {
-        "ru": {
-          "grim": ["Заводится! Все сюда!", "Уходим, сейчас же!", "Последний шанс!", "Мы выберемся.", "Двери закрываются!"],
-          "comic": ["Поехали, поехали!", "Кто не успел — тот опоздал!", "Я же говорил, что заведу!", "Держитесь, водитель я так себе!", "До свидания, город!"]
-        },
-        "en": {
-          "grim": ["It's starting! Everyone in!", "We're leaving, now!", "Last chance!", "We're getting out.", "Doors are closing!"],
-          "comic": ["Go, go, go!", "Snooze you lose!", "Told you I'd start it!", "Hold on, I'm a terrible driver!", "Goodbye, city!"]
-        }
-      }
-    },
     "suspect_neighbor": {
       "priority": 65,
       "cooldown": 20.0,
