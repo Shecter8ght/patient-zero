@@ -16,6 +16,8 @@ var sim:          Node3D
 var cam:          Camera3D
 var _target_size: float
 var _prev_floor:  int = -1
+@export var rotation_sensitivity: float = 0.005
+var _rotating: bool = false
 
 
 func _ready() -> void:
@@ -55,7 +57,13 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
+		var mb: InputEventMouseButton = event as InputEventMouseButton
+
+		if mb.button_index == MOUSE_BUTTON_MIDDLE:
+			_rotating = mb.pressed
+			get_viewport().set_input_as_handled()
+			return
+
 		if mb.pressed:
 			if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
 				_target_size = clampf(_target_size - ZOOM_STEP, ORTHO_MIN, ORTHO_MAX)
@@ -63,3 +71,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 				_target_size = clampf(_target_size + ZOOM_STEP, ORTHO_MIN, ORTHO_MAX)
 				get_viewport().set_input_as_handled()
+
+	elif event is InputEventMouseMotion and _rotating:
+		var motion: InputEventMouseMotion = event as InputEventMouseMotion
+		rotation.y -= motion.screen_relative.x * rotation_sensitivity
+		get_viewport().set_input_as_handled()

@@ -1,5 +1,5 @@
 extends MultiMeshInstance3D
-## Seven mesh batches, no agent nodes or per-agent Skeleton3D/AnimationPlayer.
+## Nine mesh batches, no agent nodes or per-agent Skeleton3D/AnimationPlayer.
 const BONE_SHADER = preload("res://assets/shaders/crowd_bones.gdshader")
 const SETS = [preload("res://assets/animations/civilian_normal_a_crowd.res"),
 	preload("res://assets/animations/civilian_child_a_crowd.res"),
@@ -7,7 +7,9 @@ const SETS = [preload("res://assets/animations/civilian_normal_a_crowd.res"),
 	preload("res://assets/animations/civilian_brute_a_crowd.res"),
 	preload("res://assets/animations/civilian_journalist_a_crowd.res"),
 	preload("res://assets/animations/police_officer_a_crowd.res"),
-	preload("res://assets/animations/swat_officer_a_crowd.res")]
+	preload("res://assets/animations/swat_officer_a_crowd.res"),
+	preload("res://assets/animations/civilian_normal_b_crowd.res"),
+	preload("res://assets/animations/civilian_normal_c_crowd.res")]
 @export var sim_path: NodePath
 var sim: Node3D
 var batches: Array[MultiMeshInstance3D] = []
@@ -57,7 +59,7 @@ func _reset_animation() -> void:
 	shooting_left.resize(n); shooting_left.fill(0)
 	grabbed_by_horde.resize(n); grabbed_by_horde.fill(0)
 
-func _on_shot(from_pos: Vector2, _to: Vector2) -> void:
+func _on_shot(from_pos: Vector2, _to: Vector2, _swat_shot: bool = false) -> void:
 	for i in sim.pos.size():
 		if sim.state[i] == sim.S.COP and sim.pos[i].distance_squared_to(from_pos) < 0.01:
 			shooting_left[i] = float(SETS[0].clips.shoot.duration)
@@ -68,7 +70,8 @@ func _process(delta: float) -> void:
 	if sim.elapsed < previous_elapsed: _reset_animation()
 	previous_elapsed = sim.elapsed
 	if sim.finished != 0: delta = 0.0
-	var counts := PackedInt32Array([0, 0, 0, 0, 0, 0, 0])
+	var counts := PackedInt32Array()
+	counts.resize(SETS.size())
 	grabbed_by_horde.fill(0)
 	for attacker in sim.grab_target.size():
 		var target: int = sim.grab_target[attacker]
@@ -85,11 +88,11 @@ func _process(delta: float) -> void:
 		if clip_names[i] != desired:
 			from_rows[i] = frame_rows[i]
 			blend_times[i] = 0.0
-			clip_times[i] = fmod(float(i) * 0.173, float(info.duration)) if info.loop and desired in ["idle", "walk", "run", "zombie_idle", "zombie_walk", "zombie_run"] else 0.0
+			clip_times[i] = fmod(float(i) * 0.173, float(info.duration)) if info.loop and desired in ["idle", "walk", "run", "bitten_idle", "bitten_walk", "bitten_run", "zombie_idle", "zombie_walk", "zombie_run"] else 0.0
 			clip_names[i] = desired
 		var rate := 1.0
-		if desired == "walk": rate = clampf(sim.vel[i].length() / Tuning.CIV_WALK, 0.4, 1.6)
-		if desired == "run": rate = clampf(sim.vel[i].length() / Tuning.CIV_PANIC, 0.5, 1.6)
+		if desired in ["walk", "bitten_walk"]: rate = clampf(sim.vel[i].length() / Tuning.CIV_WALK, 0.4, 1.6)
+		if desired in ["run", "bitten_run"]: rate = clampf(sim.vel[i].length() / Tuning.CIV_PANIC, 0.5, 1.6)
 		if desired == "zombie_walk": rate = clampf(sim.vel[i].length() / Tuning.INFECTED_SPEED, 0.5, 1.5)
 		if desired == "zombie_run": rate = clampf(sim.vel[i].length() / Tuning.INFECTED_COP_SPEED, 0.5, 1.5)
 		clip_times[i] += delta * rate
@@ -99,8 +102,6 @@ func _process(delta: float) -> void:
 		turning_left[i] = maxf(0.0, turning_left[i] - delta)
 		shooting_left[i] = maxf(0.0, shooting_left[i] - delta)
 		if sim.floor_idx[i] != sim.p_floor: continue
-		# Evacuated agents reuse DEAD but still have positive health.
-		if state == sim.S.DEAD and sim.health[i] > 0: continue
 		var index := counts[kind]
 		counts[kind] += 1
 		var mm := batches[kind].multimesh
@@ -118,6 +119,7 @@ func _process(delta: float) -> void:
 func _kind(i: int) -> int:
 	if sim.is_swat[i] == 1: return 6
 	if sim.was_cop[i] == 1 or sim.state[i] in [sim.S.COP, sim.S.INFECTED_COP]: return 5
+	if sim.archetype[i] == 0 and i % 3 != 0: return 6 + i % 3
 	return clampi(sim.archetype[i], 0, 4)
 
 func _clip_for(i: int) -> String:
@@ -125,13 +127,15 @@ func _clip_for(i: int) -> String:
 	if turning_left[i] > 0: return "turning"
 	if i == sim.p_grab or grabbed_by_horde[i] == 1: return "resist"
 	if sim.grab_target[i] >= 0: return "bite" if sim.state[i] in [sim.S.INFECTED, sim.S.INFECTED_COP] else "grab"
-	if sim.p_being_arrested and i == sim._arresting_cop: return "grab"
 	if sim.state[i] in [sim.S.INFECTED, sim.S.INFECTED_COP]:
 		if sim.vel[i].length_squared() <= 0.04: return "zombie_idle"
 		return "zombie_run" if sim.vel[i].length() > Tuning.ANIM_ZOMBIE_RUN_THRESHOLD else "zombie_walk"
 	if shooting_left[i] > 0: return "shoot"
 	if sim.phone_timer[i] > 0: return "phone"
 	if sim.photo_timer[i] > 0: return "photo"
+	if sim.state[i] == sim.S.LATENT:
+		if sim.vel[i].length_squared() <= 0.04: return "bitten_idle"
+		return "bitten_run" if sim.vel[i].length() > Tuning.ANIM_RUN_THRESHOLD else "bitten_walk"
 	if sim.vel[i].length_squared() > 0.04: return "run" if sim.vel[i].length() > Tuning.ANIM_RUN_THRESHOLD else "walk"
 	return "idle"
 

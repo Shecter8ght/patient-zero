@@ -1,75 +1,82 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene format=3 uid="uid://cln63m73x4g8d"]
 
-[ext_resource type="Script" path="res://scripts/sim.gd" id="1_sim"]
-[ext_resource type="Script" path="res://scripts/agent_renderer.gd" id="2_render"]
-[ext_resource type="Script" path="res://scripts/camera_rig.gd" id="3_cam"]
-[ext_resource type="Script" path="res://scripts/player_view.gd" id="4_player"]
-[ext_resource type="Script" path="res://scripts/hud.gd" id="5_hud"]
-[ext_resource type="Script" path="res://scripts/map_renderer.gd" id="6_maprender"]
-[ext_resource type="Script" path="res://scripts/bullet_tracer.gd" id="7_tracer"]
-[ext_resource type="Script" path="res://scripts/barks.gd" id="8_barks"]
+[ext_resource type="Script" uid="uid://b4cwem5rp0h8s" path="res://scripts/sim.gd" id="1_sim"]
+[ext_resource type="Script" uid="uid://4ghocobvlsg2" path="res://scripts/agent_renderer.gd" id="2_render"]
+[ext_resource type="Script" uid="uid://bru3yc0fqsggo" path="res://scripts/camera_rig.gd" id="3_cam"]
+[ext_resource type="Script" uid="uid://vvgm37jynveh" path="res://scripts/player_view.gd" id="4_player"]
+[ext_resource type="Script" uid="uid://bajy24ms8or3w" path="res://scripts/hud.gd" id="5_hud"]
+[ext_resource type="Script" uid="uid://b4dfrmhge36dj" path="res://scripts/map_renderer.gd" id="6_maprender"]
+[ext_resource type="Script" uid="uid://dapuwq4jc5oii" path="res://scripts/bullet_tracer.gd" id="7_tracer"]
+[ext_resource type="Script" uid="uid://d4mcbpu33h15i" path="res://scripts/barks.gd" id="8_barks"]
+[ext_resource type="Script" uid="uid://4g0ons6qkjrk" path="res://scripts/blood_effects.gd" id="9_blood"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 size = Vector2(140, 140)
 
 [sub_resource type="StandardMaterial3D" id="Mat_ground"]
 albedo_color = Color(0.086, 0.094, 0.133, 1)
-roughness = 1.0
 
-[node name="Main" type="Node3D"]
+[node name="Main" type="Node3D" unique_id=579433856]
 script = ExtResource("1_sim")
 
-[node name="Ground" type="MeshInstance3D" parent="."]
+[node name="Ground" type="MeshInstance3D" parent="." unique_id=657747126]
 mesh = SubResource("PlaneMesh_ground")
 surface_material_override/0 = SubResource("Mat_ground")
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=284519185]
 transform = Transform3D(0.86, -0.35, 0.36, 0, 0.71, 0.7, -0.5, -0.6, 0.62, 0, 20, 0)
 light_energy = 1.1
 shadow_enabled = true
 
-[node name="Agents" type="MultiMeshInstance3D" parent="."]
+[node name="Agents" type="MultiMeshInstance3D" parent="." unique_id=86541587]
 script = ExtResource("2_render")
 sim_path = NodePath("..")
 
-[node name="PlayerView" type="Node3D" parent="."]
+[node name="PlayerView" type="Node3D" parent="." unique_id=441549202]
 script = ExtResource("4_player")
 sim_path = NodePath("..")
 
-[node name="CameraRig" type="Node3D" parent="."]
+[node name="CameraRig" type="Node3D" parent="." unique_id=1058522681]
 script = ExtResource("3_cam")
 sim_path = NodePath("..")
 
-[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+[node name="Camera3D" type="Camera3D" parent="CameraRig" unique_id=1629526481]
 
-[node name="MapRenderer" type="Node3D" parent="."]
+[node name="MapRenderer" type="Node3D" parent="." unique_id=816601662]
 script = ExtResource("6_maprender")
 
-[node name="BulletTracer" type="Node3D" parent="."]
+[node name="BulletTracer" type="Node3D" parent="." unique_id=1746437379]
 script = ExtResource("7_tracer")
 
-[node name="Barks" type="Node3D" parent="."]
+[node name="Barks" type="Node3D" parent="." unique_id=981466797]
 script = ExtResource("8_barks")
 
-[node name="HUD" type="CanvasLayer" parent="."]
+[node name="BloodEffects" type="Node3D" parent="." unique_id=817760838]
+script = ExtResource("9_blood")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1335421332]
 script = ExtResource("5_hud")
 sim_path = NodePath("..")
 
-[node name="Root" type="Control" parent="HUD"]
+[node name="Root" type="Control" parent="HUD" unique_id=977211905]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 
-[node name="Suspicion" type="ProgressBar" parent="HUD/Root"]
+[node name="Suspicion" type="ProgressBar" parent="HUD/Root" unique_id=56057727]
+layout_mode = 0
 offset_left = 24.0
 offset_top = 24.0
 offset_right = 280.0
 offset_bottom = 38.0
-max_value = 100.0
 show_percentage = false
 
-[node name="Status" type="Label" parent="HUD/Root"]
+[node name="Status" type="Label" parent="HUD/Root" unique_id=1440628942]
+layout_mode = 0
 offset_left = 24.0
 offset_top = 46.0
 offset_right = 520.0

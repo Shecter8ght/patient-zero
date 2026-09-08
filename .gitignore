@@ -6,3 +6,6 @@ export_presets.cfg
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated verification screenshots
+tests/output/

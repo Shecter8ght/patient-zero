@@ -5,10 +5,6 @@ extends Node3D
 const STREET_RENDERER = preload("res://scripts/street_renderer.gd")
 const CITY_BUILDINGS = preload("res://scripts/city_building_catalog.gd")
 const HOUSE_MODEL = preload("res://assets/models/buildings/building_house_a.glb")
-const BUS_MODEL = preload("res://assets/models/vehicles/evac_bus.glb")
-
-var _evac_buses: Array[Node3D] = []
-var _route_bus_nodes: Array[Node3D] = []
 const MALL_SHELL = preload("res://assets/models/mall/mall_shell.glb")
 const MALL_FLOOR = preload("res://assets/models/mall/mall_floor.glb")
 const MALL_KIOSKS = [preload("res://assets/models/mall/mall_kiosk_food.glb"), preload("res://assets/models/mall/mall_kiosk_clothes.glb"), preload("res://assets/models/mall/mall_kiosk_electronics.glb")]
@@ -24,7 +20,6 @@ var _bldg_floor_ids:  PackedInt32Array
 var _bldg_wall_mats:  Array   # Array[StandardMaterial3D]
 var _bldg_roof_mats:  Array   # Array[StandardMaterial3D]
 var _bldg_rects:      Array   # Array[Rect2]
-var _evac_meshes: Array[MeshInstance3D] = []
 var _horde_marker: MeshInstance3D = null
 var _horde_mat:    StandardMaterial3D = null
 
@@ -119,50 +114,6 @@ func _process(delta: float) -> void:
 			_horde_mat.emission_energy_multiplier = 1.5 + 2.0 * pulse
 	else:
 		_horde_marker.visible = false
-
-	# Маршрутные автобусы (городские маршруты)
-	var rbuses: Array = _sim.route_buses
-	while _route_bus_nodes.size() < rbuses.size():
-		var rbn := BUS_MODEL.instantiate() as Node3D
-		rbn.name = "RouteBus%d" % _route_bus_nodes.size()
-		add_child(rbn)
-		_route_bus_nodes.append(rbn)
-	for ri in rbuses.size():
-		var rb: Dictionary = rbuses[ri]
-		var rbn: Node3D    = _route_bus_nodes[ri]
-		var rbp: Vector2   = rb["pos"]
-		rbn.position  = Vector3(rbp.x, 0.0, rbp.y)
-		rbn.rotation.y = -float(rb["vel_angle"])
-		rbn.visible   = (pfl == 0)
-
-	# Точки эвакуации
-	var active_evac: Array = _sim.evac_points
-	for mi_idx in _evac_meshes.size():
-		_evac_meshes[mi_idx].visible = false
-		_evac_buses[mi_idx].visible = false
-	for ep_idx in active_evac.size():
-		if ep_idx >= _evac_meshes.size():
-			_evac_meshes.append(_make_evac_mesh())
-			var bus := BUS_MODEL.instantiate() as Node3D
-			bus.name = "EvacBus%d" % ep_idx
-			add_child(bus)
-			_evac_buses.append(bus)
-		var mi: MeshInstance3D = _evac_meshes[ep_idx]
-		var ep: Dictionary     = active_evac[ep_idx]
-		var bus: Node3D = _evac_buses[ep_idx]
-		bus.visible = (pfl == 0)
-		var boarding := bus.find_child("BoardingPoint", true, false) as Node3D
-		var inward := -Vector3(ep["pos"].x, 0, ep["pos"].y).normalized()
-		bus.rotation.y = atan2(-inward.z, inward.x)
-		bus.position = Vector3(ep["pos"].x, 0, ep["pos"].y) - bus.basis * boarding.position
-		mi.visible  = (pfl == 0)
-		mi.position = Vector3(ep["pos"].x, 0.15, ep["pos"].y)
-		var pulse := 0.7 + 0.3 * sin(Time.get_ticks_msec() * 0.003)
-		var mat := mi.get_surface_override_material(0) as StandardMaterial3D
-		if mat:
-			mat.albedo_color = Color(0.1, 1.0, 0.3, pulse)
-			mat.emission     = Color(0.0, 0.8, 0.2) * pulse
-
 
 # ---------------------------------------------------------------- обычные здания
 func _render_outdoor_buildings() -> void:
@@ -381,23 +332,6 @@ func _render_transition_markers() -> void:
 		var dp: Vector2 = entry["door_pos"]
 		var bew := Tuning.BUILDING_DOOR_W * 0.5
 		_add_marker(exterior, Rect2(dp.x - bew, dp.y - 0.3, bew * 2, 0.5), 0.05, Color(0.15, 0.90, 0.40))
-
-
-func _make_evac_mesh() -> MeshInstance3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color            = Color(0.1, 1.0, 0.3, 0.8)
-	mat.transparency            = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.emission_enabled        = true
-	mat.emission                = Color(0.0, 0.8, 0.2)
-	mat.emission_energy_multiplier = 2.0
-	mat.roughness               = 0.3
-	var box := BoxMesh.new()
-	box.size = Vector3(6.0, 0.25, 6.0)
-	var mi  := MeshInstance3D.new()
-	mi.mesh = box
-	mi.set_surface_override_material(0, mat)
-	add_child(mi)
-	return mi
 
 
 func _make_horde_marker() -> MeshInstance3D:

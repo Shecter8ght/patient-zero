@@ -26,8 +26,9 @@ var transitions: Array = []
 var interior_by_floor: Dictionary = {}   # floor_id -> Rect2
 
 # --- Точки спавна ---
-var spawn_points: PackedVector2Array
-var mall_spawns:  Array = []   # Array[PackedVector2Array], индекс = floor-1
+var spawn_points:    PackedVector2Array
+var mall_spawns:     Array = []   # Array[PackedVector2Array], индекс = floor-1
+var building_spawns: Array = []   # Array[Dictionary] {floor_id, points: PackedVector2Array}
 
 # --- Данные для рендера ---
 # {rect, height, color, is_mall, has_interior, floor_id, interior_rect, door_pos}
@@ -49,6 +50,7 @@ func generate() -> void:
 	street_data = STREET_LAYOUT.new().build(self)
 	_build_spawn_points()
 	_build_mall_spawns()
+	_build_building_spawns()
 
 
 # ----------------------------------------------------------------- ТЦ
@@ -236,6 +238,25 @@ func _build_spawn_points() -> void:
 				spawn_points.append(Vector2(x, y))
 			y += step
 		x += step
+
+
+func _build_building_spawns() -> void:
+	building_spawns.clear()
+	var step := 1.5
+	for floor_id: int in interior_by_floor:
+		var r: Rect2 = interior_by_floor[floor_id]
+		var pts := PackedVector2Array()
+		var x := r.position.x + step
+		while x < r.end.x - step * 0.5:
+			var y := r.position.y + step
+			while y < r.end.y - step * 0.5:
+				var p := Vector2(x, y)
+				if not is_blocked(p, 0.3, floor_id):
+					pts.append(p)
+				y += step
+			x += step
+		if pts.size() > 0:
+			building_spawns.append({"floor_id": floor_id, "points": pts})
 
 
 func _build_mall_spawns() -> void:

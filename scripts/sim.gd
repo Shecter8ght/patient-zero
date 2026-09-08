@@ -22,14 +22,10 @@ var floor_idx:    PackedByteArray     # 0=улица, 1..MALL_FLOORS=ТЦ
 var floor_cd:     PackedFloat32Array  # кулдаун смены этажа
 var health:       PackedByteArray     # здоровье: AGENT_HEALTH выстрелов
 var archetype:    PackedByteArray     # ARCH_* константы Tuning
-var infect_thresh: PackedFloat32Array # порог p_prog для заражения по архетипу
 var photo_timer:  PackedFloat32Array  # > 0 = журналист фотографирует
 var has_phone:    PackedByteArray     # 1 = есть телефон
 var phone_timer:  PackedFloat32Array  # > 0 = звонит (обратный отсчёт)
 var survivor_role:   PackedByteArray    # SURV_* константы Tuning (0=нет)
-var following_org:   PackedInt32Array   # -1 или индекс организатора
-var following_org_t: PackedFloat32Array # оставшееся время следования
-var org_rally_t:     PackedFloat32Array # кулдаун сбора группы для организатора
 
 # --- Игрок ---
 var p_pos      := Vector2.ZERO
@@ -42,14 +38,6 @@ var p_health   := Tuning.AGENT_HEALTH
 var sprinting  := false
 var holding    := false
 
-# --- Арест ---
-var p_being_arrested := false
-var p_arrest_timer   := 0.0
-var _arresting_cop   := -1
-var p_qte_key        := KEY_NONE   # текущая ожидаемая клавиша
-var p_qte_key_str    := ""         # строка для HUD
-var _qte_timer       := 0.0        # время до смены клавиши
-
 # --- Шкала захвата ---
 var _slider_pos    := 0.5   # текущая позиция [0..1]
 var _slider_dir    := 1.0   # направление (+1 или -1)
@@ -60,11 +48,6 @@ var _player_knock  := Vector2.ZERO  # импульс отброса при ат�
 var _throw_cd := 0.0
 var _grab_cd  := 0.0   # кулдаун после разрыва — не прыгать на соседа
 
-const _QTE_ALL  := [["Q",KEY_Q],["W",KEY_W],["E",KEY_E],["A",KEY_A],["S",KEY_S],["D",KEY_D]]
-const _QTE_CIV  := [["Q",KEY_Q],["E",KEY_E],["A",KEY_A]]
-const _QTE_COP  := [["Q",KEY_Q],["W",KEY_W],["E",KEY_E],["A",KEY_A],["S",KEY_S]]
-const _QTE_SWAT := [["Q",KEY_Q],["W",KEY_W],["E",KEY_E],["A",KEY_A],["S",KEY_S],["D",KEY_D]]
-
 # --- Состояние забега ---
 var suspicion       := 0.0
 var elapsed         := 0.0
@@ -72,11 +55,6 @@ var cop_count       := 0
 var cop_spawn_t     := 0.0
 var finished        := 0   # 0=идёт, 1=победа, 2=поражение
 var _infected_frac  := 0.0  # доля заражённых, обновляется в _update_agents
-
-var evac_timer      := 0.0
-var evac_count      := 0
-var evac_points: Array[Dictionary] = []
-var _evac_announced := false
 
 # --- Орда ---
 const HC_NONE   := 0   # нет команды
@@ -106,11 +84,6 @@ var _esc_checked     := [false, false, false]
 
 # --- SWAT ---
 var is_swat:        PackedByteArray
-var is_bus_driver:  PackedByteArray
-
-# --- Маршрутные автобусы ---
-var route_buses: Array = []
-
 # --- Идентичности и трекинг заражений ---
 var identities:     Array          = []   # Array[Dictionary], один на агента
 var infected_by:    PackedInt32Array      # -1=игрок, -2=аура, -3=нет
@@ -125,7 +98,7 @@ var _grid := {}
 
 signal run_finished(result: int, seconds: float)
 signal escalation_triggered(level: int, headline: String)
-signal stats_changed(healthy: int, infected: int, latent: int, dead: int, cops: int, suspicion: float, arrest_prog: float, qte_key: String, evac_count: int)
+signal stats_changed(healthy: int, infected: int, latent: int, dead: int, cops: int, suspicion: float)
 signal shot_fired(from_pos: Vector2, to_pos: Vector2, is_swat_shot: bool)
 signal mutation_available(options: Array)
 signal horde_commanded(world_pos: Vector2)
@@ -147,17 +120,13 @@ func reset_run() -> void:
 	alert.resize(n);       alert_target.resize(n); was_cop.resize(n)
 	floor_idx.resize(n);   floor_cd.resize(n);    health.resize(n)
 	is_swat.resize(n)
-	archetype.resize(n);   infect_thresh.resize(n); photo_timer.resize(n)
+	archetype.resize(n);   photo_timer.resize(n)
 	has_phone.resize(n);   phone_timer.resize(n)
-	is_bus_driver.resize(n)
 	infected_by.resize(n); infected_at.resize(n)
 	infected_where.resize(n); spread_count.resize(n)
 	dest.resize(n)
 	identities.clear();    identities.resize(n)
 	survivor_role.resize(n);   survivor_role.fill(0)
-	following_org.resize(n);   following_org.fill(-1)
-	following_org_t.resize(n); following_org_t.fill(0.0)
-	org_rally_t.resize(n);     org_rally_t.fill(0.0)
 	_id_rng.randomize()
 	_last_infector = -3
 
@@ -235,7 +204,6 @@ func reset_run() -> void:
 				arch = ai
 				break
 		archetype[i]    = arch
-		infect_thresh[i] = Tuning.ARCH_THRESH[arch]
 		photo_timer[i]  = 0.0
 		is_swat[i]      = 0
 		var can_have_phone := (arch == Tuning.ARCH_NORMAL or arch == Tuning.ARCH_ELDER)
@@ -259,8 +227,6 @@ func reset_run() -> void:
 			# но после него уже никогда не успокаивается (в _tick_civilian)
 		elif r < Tuning.SURV_PANICKER_CHANCE + Tuning.SURV_HIDER_CHANCE:
 			survivor_role[i] = Tuning.SURV_HIDER
-		elif r < Tuning.SURV_PANICKER_CHANCE + Tuning.SURV_HIDER_CHANCE + Tuning.SURV_ORGANIZER_CHANCE:
-			survivor_role[i] = Tuning.SURV_ORGANIZER
 
 	# -------- игрок появляется в переулке у края карты --------
 	var corner := Vector2(-65.0, -65.0)
@@ -278,12 +244,6 @@ func reset_run() -> void:
 	p_floor          = 0
 	p_floor_cd       = 0.0
 	p_health          = Tuning.AGENT_HEALTH
-	p_being_arrested  = false
-	p_arrest_timer    = 0.0
-	_arresting_cop    = -1
-	p_qte_key         = KEY_NONE
-	p_qte_key_str     = ""
-	_qte_timer        = 0.0
 	_slider_pos    = 0.5
 	_slider_dir    = 1.0
 	_resist_gather = 0.0
@@ -300,13 +260,8 @@ func reset_run() -> void:
 	horde_target_life  = 0.0
 	horde_target_agent = -1
 	horde_floor        = 0
-	evac_timer        = Tuning.EVAC_FIRST_TIME
-	evac_count        = 0
-	evac_points.clear()
-	_evac_announced   = false
 	active_mutations.clear()
 	active_syntheses.clear()
-	route_buses.clear()
 	_next_mut_at      = Tuning.MUT_THRESHOLD
 	_pending_mutation = false
 	grab_range_eff    = Tuning.GRAB_RANGE
@@ -315,21 +270,22 @@ func reset_run() -> void:
 	escalation_level  = 0
 	_esc_checked      = [false, false, false]
 	_infected_frac    = 0.0
-	_build_bus_routes()
 
 
 func _physics_process(delta: float) -> void:
-	if finished != 0:
+	if finished != 0 or delta <= 0.0 or Engine.time_scale == 0.0:
 		return
 	if _pending_mutation:
 		return
 	elapsed += delta
 	_rebuild_grid()
 	_update_player(delta)
+	if finished != 0 or _pending_mutation:
+		return
 	_update_agents(delta)
+	if finished != 0 or _pending_mutation:
+		return
 	_spawn_cops(delta)
-	_tick_evac(delta)
-	_tick_route_buses(delta)
 	var susp_decay_mult := Tuning.SYN_SHADOW_SUSP_MULT if Tuning.SYN_SHADOW in active_syntheses else 1.0
 	suspicion = clampf(suspicion - Tuning.SUSP_DECAY * susp_decay_mult * delta, 0.0, 100.0)
 
@@ -363,49 +319,9 @@ func _neighbors(p: Vector2, floor: int) -> Array[int]:
 	return out
 
 
-# ---------------------------------------------------------------- арест
-func _handle_arrest(delta: float) -> void:
-	if _arresting_cop < 0 or state[_arresting_cop] != S.COP:
-		_clear_arrest()
-		return
-
-	# Игрок заморожен
-	p_vel = p_vel.move_toward(Vector2.ZERO, Tuning.ACCEL * delta)
-
-	# Таймер ареста
-	p_arrest_timer += delta
-	if p_arrest_timer >= Tuning.ARREST_TIME:
-		finished = 2
-		run_finished.emit(2, elapsed)
-		return
-
-	# Смена клавиши по интервалу
-	_qte_timer -= delta
-	if _qte_timer <= 0.0:
-		_qte_timer = Tuning.QTE_INTERVAL
-		var pick: Array = _QTE_ALL[randi() % _QTE_ALL.size()]
-		p_qte_key_str = pick[0]
-		p_qte_key     = pick[1]
-
-
-func _clear_arrest() -> void:
-	p_being_arrested = false
-	p_arrest_timer   = 0.0
-	_arresting_cop   = -1
-	p_qte_key        = KEY_NONE
-	p_qte_key_str    = ""
-	_qte_timer       = 0.0
-	p_grab           = -1
-	p_prog           = 0.0
-
-
 # ---------------------------------------------------------------- игрок
 func _update_player(delta: float) -> void:
 	p_floor_cd = maxf(0.0, p_floor_cd - delta)
-
-	if p_being_arrested:
-		_handle_arrest(delta)
-		return
 
 	_throw_cd         = maxf(0.0, _throw_cd - delta)
 	_grab_cd          = maxf(0.0, _grab_cd  - delta)
@@ -505,11 +421,7 @@ func _update_player(delta: float) -> void:
 					_break_grab(true)
 			# Шкала: ползунок двигается, Space = выбор исхода
 			if p_grab >= 0:
-				var arch := archetype[p_grab] if p_grab < archetype.size() else 0
-				var spd: float = Tuning.SLIDER_SPEED_BASE * float(Tuning.SLIDER_SPEED_ARCH[arch])
-				if _resist_gather >= Tuning.RESIST_ATTACK_DELAY * 0.5:
-					spd *= Tuning.SLIDER_SPEED_RESIST
-				_slider_pos += _slider_dir * spd * delta
+				_slider_pos += _slider_dir * Tuning.SLIDER_SPEED * delta
 				if _slider_pos >= 1.0:
 					_slider_pos = 1.0; _slider_dir = -1.0
 				elif _slider_pos <= 0.0:
@@ -540,9 +452,9 @@ func _break_grab(scream: bool) -> void:
 func _resolve_slider() -> void:
 	if p_grab < 0: return
 	var sl := _slider_pos
-	# Backstab значительно сужает зону "вырвался"
-	var esc_end   := 0.04 if _backstab_applied else Tuning.SLIDER_ESCAPE_END
-	var kill_start := 0.96 if _backstab_applied else Tuning.SLIDER_KILL_START
+	var bounds := slider_bounds(archetype[p_grab], _backstab_applied)
+	var esc_end: float = bounds.x
+	var kill_start: float = bounds.y
 	if sl <= esc_end:
 		# ВЫРВАЛСЯ
 		_break_grab(true)
@@ -559,13 +471,27 @@ func _resolve_slider() -> void:
 	else:
 		# УБИТ
 		var v := p_grab
-		blood_hit.emit(pos[v], floor_idx[v], true, (pos[v] - p_pos).normalized(), 1)
+		blood_hit.emit(pos[v], floor_idx[v], true, (pos[v] - p_pos).normalized())
 		state[v] = S.DEAD
 		vel[v]   = Vector2.ZERO
 		suspicion = minf(100.0, suspicion + Tuning.SUSP_KILL_CIV)
 		p_grab = -1; p_prog = 0.0
 		_slider_pos = 0.5; _slider_dir = 1.0; _resist_gather = 0.0
 		_backstab_applied = false
+
+
+func slider_bounds(arch: int, backstab: bool = false) -> Vector2:
+	var safe_arch := clampi(arch, 0, Tuning.SLIDER_ESCAPE_END_BY_ARCH.size() - 1)
+	var escape_end: float = Tuning.SLIDER_ESCAPE_END_BY_ARCH[safe_arch]
+	var kill_start: float = Tuning.SLIDER_KILL_START_BY_ARCH[safe_arch]
+	if backstab:
+		var infect_width := kill_start - escape_end
+		var kill_width := 1.0 - kill_start
+		var remaining := 0.96
+		var ratio := infect_width / (infect_width + kill_width)
+		escape_end = 0.04
+		kill_start = escape_end + remaining * ratio
+	return Vector2(escape_end, kill_start)
 
 
 func _check_resisters(delta: float) -> void:
@@ -644,6 +570,9 @@ func _count_helpers(v: int) -> int:
 
 
 func _infect(i: int) -> void:
+	if state[i] != S.HEALTHY and state[i] != S.COP:
+		_last_infector = -3
+		return
 	infected_by[i]    = _last_infector
 	infected_at[i]    = elapsed
 	infected_where[i] = pos[i]
@@ -678,6 +607,8 @@ func _offer_mutations() -> void:
 		return
 	available.shuffle()
 	var options := available.slice(0, min(3, available.size()))
+	holding = false
+	sprinting = false
 	mutation_available.emit(options)
 
 
@@ -711,32 +642,26 @@ func _try_activate_syn(syn_id: int, mut_a: int, mut_b: int) -> void:
 
 # ---------------------------------------------------------------- агенты
 func _update_agents(delta: float) -> void:
-	var healthy  := 0
-	var infected := 0
-	var latent   := 0
-	var dead     := 0
-	var cops     := 0
+	if finished != 0:
+		return
 
 	for i in pos.size():
 		floor_cd[i] = maxf(0.0, floor_cd[i] - delta)
 
 		match state[i]:
 			S.DEAD:
-				dead += 1
 				continue
 			S.LATENT:
-				latent   += 1
-				infected += 1
 				_tick_latent(i, delta)
 			S.INFECTED, S.INFECTED_COP:
-				infected += 1
 				_tick_infected(i, delta)
 			S.COP:
-				cops += 1
 				_tick_cop(i, delta)
 			_:
-				healthy += 1
 				_tick_civilian(i, delta)
+
+		if finished != 0:
+			return
 
 		var intended := pos[i] + vel[i] * delta
 		pos[i] = MapGen.push_out(intended, 0.35, floor_idx[i])
@@ -780,16 +705,18 @@ func _update_agents(delta: float) -> void:
 			_last_infector = pair[1]
 			_infect(pair[0])
 
-	# Проверка порога мутации
-	var total_infected := infected + latent + dead
-	if total_infected >= _next_mut_at and not _pending_mutation:
-		_next_mut_at += Tuning.MUT_THRESHOLD
-		_pending_mutation = true
-		_offer_mutations()
+	var counts := population_counts()
+	var healthy: int = counts.healthy
+	var infected: int = counts.infected
+	var latent: int = counts.latent
+	var dead: int = counts.dead
+	var cops: int = counts.cops
+	# LATENT is already included in infected. Dead retain the existing progress rule.
+	var total_infected := infected + dead
 
 	# Проверка порогов эскалации
 	var total_agents := pos.size()
-	var infected_frac := float(infected + latent + dead) / float(total_agents) if total_agents > 0 else 0.0
+	var infected_frac := float(infected + dead) / float(total_agents) if total_agents > 0 else 0.0
 	_infected_frac = infected_frac
 	for ei in Tuning.ESC_THRESHOLDS.size():
 		if not _esc_checked[ei] and infected_frac >= Tuning.ESC_THRESHOLDS[ei]:
@@ -799,12 +726,15 @@ func _update_agents(delta: float) -> void:
 			escalation_triggered.emit(escalation_level, Tuning.ESC_HEADLINES_RU[ei])
 
 	var got := infected + dead
-	var arrest_prog := p_arrest_timer / Tuning.ARREST_TIME if p_being_arrested else 0.0
-	stats_changed.emit(healthy, infected, latent, dead, cops, suspicion, arrest_prog,
-		p_qte_key_str if p_being_arrested else "", evac_count)
+	stats_changed.emit(healthy, infected, latent, dead, cops, suspicion)
 	if pos.size() > 0 and float(got) / float(pos.size()) >= Tuning.WIN_RATIO:
-		finished = 1
-		run_finished.emit(1, elapsed)
+		_finish_run(1)
+		return
+	if total_infected >= _next_mut_at and not _pending_mutation:
+		_next_mut_at += Tuning.MUT_THRESHOLD
+		_pending_mutation = true
+		_offer_mutations()
+
 
 
 func _tick_latent(i: int, delta: float) -> void:
@@ -858,20 +788,6 @@ func _tick_infected(i: int, delta: float) -> void:
 				grab_target[i] = -1
 				grab_prog[i]   = 0.0
 			return
-
-	# Помощь орды: если игрока арестовывают — бежим к копу и хватаем его
-	if p_being_arrested and _arresting_cop >= 0 and grab_target[i] < 0:
-		var cop_fl := floor_idx[_arresting_cop]
-		if floor_idx[i] == cop_fl:
-			var d_cop := pos[i].distance_to(pos[_arresting_cop])
-			if d_cop < Tuning.COP_RESCUE_RADIUS:
-				if d_cop < Tuning.GRAB_RANGE * 1.8:
-					grab_target[i] = _arresting_cop
-					grab_prog[i]   = maxf(grab_prog[i], 0.15)
-				else:
-					var to_cop := pos[_arresting_cop] - pos[i]
-					vel[i] = vel[i].move_toward(to_cop.normalized() * speed * 1.3, Tuning.ACCEL * delta)
-				return
 
 	# Мягкое расталкивание между заражёнными (против скучивания)
 	var repulse := Vector2.ZERO
@@ -1007,11 +923,6 @@ func _count_healthy_near(target: int, fl: int, radius: float) -> int:
 
 
 func _tick_cop(i: int, delta: float) -> void:
-	# Арестующий коп держит позицию — логику пропускаем
-	if p_being_arrested and _arresting_cop == i:
-		vel[i] = vel[i].move_toward(Vector2.ZERO, Tuning.ACCEL * delta)
-		return
-
 	timer[i] = maxf(0.0, timer[i] - delta)
 	alert[i] = maxf(0.0, alert[i] - delta)
 
@@ -1074,12 +985,7 @@ func _tick_cop(i: int, delta: float) -> void:
 				bark_event.emit(i, "cop_shoot", pos[i], floor_idx[i])
 				p_health -= 1
 				if p_health <= 0:
-					finished = 2
-					run_finished.emit(2, elapsed)
-		elif pdist < Tuning.COP_ARREST_RANGE and not p_being_arrested:
-			p_being_arrested = true
-			_arresting_cop   = i
-			p_prog           = 0.0
+					_finish_run(2)
 
 	if goal != Vector2.INF:
 		var cop_spd := Tuning.SWAT_SPEED if is_swat[i] == 1 else Tuning.COP_SPEED
@@ -1101,43 +1007,6 @@ func _radio(from: int, target: int) -> void:
 
 
 func _tick_civilian(i: int, delta: float) -> void:
-	# Водитель автобуса — его позицией управляет _tick_route_buses
-	if is_bus_driver[i] == 1:
-		return
-
-	# --- Организатор: периодически собирает группу и ведёт к автобусу ---
-	if survivor_role[i] == Tuning.SURV_ORGANIZER and state[i] == S.HEALTHY:
-		org_rally_t[i] = maxf(0.0, org_rally_t[i] - delta)
-		if org_rally_t[i] <= 0.0:
-			org_rally_t[i] = Tuning.ORGANIZER_RALLY_INTERVAL
-			var rallied := 0
-			for nb in _neighbors(pos[i], floor_idx[i]):
-				if nb == i or state[nb] != S.HEALTHY: continue
-				if survivor_role[nb] == Tuning.SURV_HIDER: continue
-				if pos[i].distance_squared_to(pos[nb]) < Tuning.ORGANIZER_RALLY_RAD * Tuning.ORGANIZER_RALLY_RAD:
-					following_org[nb]   = i
-					following_org_t[nb] = Tuning.ORGANIZER_FOLLOW_TIME
-					rallied += 1
-					if rallied >= 4: break
-			if rallied > 0:
-				bark_event.emit(i, "evac_call", pos[i], floor_idx[i])
-		# Организатор сам тоже паникует в сторону автобуса
-		panic[i] = maxf(panic[i], Tuning.PANIC_MEMORY)
-
-	# --- Следование за организатором ---
-	if following_org[i] >= 0 and state[i] == S.HEALTHY:
-		following_org_t[i] -= delta
-		var oi := following_org[i]
-		if following_org_t[i] <= 0.0 or state[oi] != S.HEALTHY or floor_idx[oi] != floor_idx[i]:
-			following_org[i] = -1  # организатор исчез — возврат к нормальному ИИ
-		else:
-			panic[i] = maxf(panic[i], Tuning.PANIC_MEMORY)
-			var to_org := pos[oi] - pos[i]
-			if to_org.length() > 1.5:
-				vel[i] = vel[i].move_toward(to_org.normalized() * Tuning.CIV_PANIC, Tuning.ACCEL * delta)
-				return  # движемся к организатору, остальной ИИ пропускаем
-			# Догнали организатора — падаем в нормальный тик (эвакуация обработается ниже)
-
 	# Журналист: видит захват → фотографирует
 	if archetype[i] == Tuning.ARCH_JOURNALIST and state[i] == S.HEALTHY:
 		var near_grab := (p_grab >= 0 and i != p_grab
@@ -1188,40 +1057,6 @@ func _tick_civilian(i: int, delta: float) -> void:
 			if sees_panic:
 				phone_timer[i] = Tuning.PHONE_CALL_TIME
 
-	# Эвакуация: только паникующие агенты бегут к автобусу (тихушники — никогда)
-	var going_to_evac := false
-	if state[i] == S.HEALTHY and panic[i] > 0.0 and floor_idx[i] == 0 \
-			and not evac_points.is_empty() and survivor_role[i] != Tuning.SURV_HIDER:
-		var nearest_evac := Vector2.ZERO
-		var best_ep: Dictionary = {}
-		var nearest_d    := INF
-		for ep in evac_points:
-			# Игрок у автобуса — агенты его боятся, ищут другой
-			if p_pos.distance_squared_to(ep["pos"]) < Tuning.EVAC_PLAYER_BLOCK_R * Tuning.EVAC_PLAYER_BLOCK_R:
-				continue
-			var d2 := pos[i].distance_squared_to(ep["pos"])
-			if d2 < nearest_d:
-				nearest_d    = d2
-				nearest_evac = ep["pos"]
-				best_ep      = ep
-		if not best_ep.is_empty():
-			var to_evac   := nearest_evac - pos[i]
-			var dist_evac := to_evac.length()
-			if dist_evac < Tuning.EVAC_RADIUS:
-				if best_ep["board_cd"] <= 0.0:
-					state[i]   = S.DEAD
-					evac_count += 1
-					best_ep["board_cd"] = Tuning.EVAC_BOARD_INTERVAL
-					if evac_count >= Tuning.EVAC_LOSE_AT and finished == 0:
-						finished = 3
-						run_finished.emit(3, elapsed)
-					return
-			else:
-				going_to_evac = true
-				bark_event.emit(i, "evac_call", pos[i], floor_idx[i])
-				var evac_spd : float = Tuning.CIV_PANIC * Tuning.ARCH_PANIC_MULT[archetype[i]]
-				vel[i] = vel[i].lerp((to_evac / dist_evac) * evac_spd, 0.15)
-
 	var flee   := Vector2.ZERO
 	var threats := 0
 	var r2     := Tuning.PANIC_RADIUS * Tuning.PANIC_RADIUS
@@ -1268,9 +1103,7 @@ func _tick_civilian(i: int, delta: float) -> void:
 			(Tuning.HIDER_PANIC_RATE if survivor_role[i] == Tuning.SURV_HIDER else 1.0)
 		panic[i] = maxf(panic[i], panic_set)
 
-	if going_to_evac:
-		panic[i] = maxf(0.0, panic[i] - delta)
-	elif panic[i] > 0.0:
+	if panic[i] > 0.0:
 		if survivor_role[i] != Tuning.SURV_PANICKER:  # паникёр не успокаивается
 			panic[i] -= delta
 		var panic_spd: float = Tuning.CIV_PANIC * Tuning.ARCH_PANIC_MULT[archetype[i]]
@@ -1282,7 +1115,7 @@ func _tick_civilian(i: int, delta: float) -> void:
 		vel[i] = vel[i].move_toward(Vector2.ZERO, Tuning.KNOCKBACK_DECAY * delta)
 	elif calling:
 		vel[i] = vel[i].move_toward(Vector2.ZERO, Tuning.ACCEL * delta)
-	elif not going_to_evac:
+	else:
 		_walk_to_dest(i, delta)
 
 
@@ -1390,37 +1223,8 @@ func _spawn_cops(delta: float) -> void:
 			is_swat[i] = 1 if spawn_as_swat else 0
 			if is_swat[i] == 1:
 				resist[i]        = 2.0
-				infect_thresh[i] = Tuning.ARCH_THRESH[Tuning.ARCH_NORMAL] * Tuning.SWAT_GRAB_MULT
 			identities[i] = Identity.generate(_id_rng, Tuning.ARCH_NORMAL, true)
 			return
-
-
-func _tick_evac(delta: float) -> void:
-	var i := evac_points.size() - 1
-	while i >= 0:
-		evac_points[i]["life"]     -= delta
-		evac_points[i]["board_cd"]  = maxf(0.0, evac_points[i]["board_cd"] - delta)
-		if evac_points[i]["life"] <= 0.0:
-			evac_points.remove_at(i)
-		i -= 1
-
-	evac_timer -= delta
-	if evac_timer > 0.0:
-		return
-	evac_timer = Tuning.EVAC_INTERVAL
-
-	for spot in Tuning.EVAC_SPOTS:
-		var taken := false
-		for ep in evac_points:
-			if (ep["pos"] as Vector2).distance_squared_to(spot) < 4.0:
-				taken = true
-				break
-		if not taken:
-			evac_points.append({"pos": spot, "life": Tuning.EVAC_POINT_LIFE, "board_cd": 0.0})
-			if not _evac_announced:
-				_evac_announced = true
-				escalation_triggered.emit(-1, "ЭВАКУАЦИЯ! АВТОБУСЫ У ПЕРИМЕТРА ГОРОДА")
-			break
 
 
 func _clamp_world(p: Vector2) -> Vector2:
@@ -1473,31 +1277,13 @@ func _do_throw() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# QTE и Space-побег во время ареста
-	if p_being_arrested and event is InputEventKey:
-		var ke := event as InputEventKey
-		if ke.pressed and not ke.echo:
-			if ke.keycode == KEY_SPACE:
-				suspicion = minf(100.0, suspicion + 35.0)
-				_clear_arrest()
-				get_viewport().set_input_as_handled()
-				return
-			if p_qte_key != KEY_NONE:
-				if ke.keycode == p_qte_key:
-					p_prog        += Tuning.QTE_HIT_PROG
-					p_qte_key      = KEY_NONE
-					p_qte_key_str  = ""
-					_qte_timer     = 0.0
-					if p_prog >= 1.0:
-						suspicion = maxf(0.0, suspicion - 25.0)
-						_last_infector = -1
-						_infect(_arresting_cop)
-						_clear_arrest()
-				get_viewport().set_input_as_handled()
-				return
-
-	# QTE захвата — только когда не арестован
-	if not p_being_arrested and p_grab >= 0 and event is InputEventKey:
+	if event.is_action_pressed("restart"):
+		reset_run()
+		get_viewport().set_input_as_handled()
+		return
+	if finished != 0 or _pending_mutation or Engine.time_scale == 0.0:
+		return
+	if p_grab >= 0 and event is InputEventKey:
 		var ke := event as InputEventKey
 		if ke.pressed and not ke.echo and ke.keycode == KEY_SPACE:
 			_resolve_slider()
@@ -1505,7 +1291,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 
 	# F / H — команды орде (Follow / Hold)
-	if event is InputEventKey and not p_being_arrested and p_grab < 0:
+	if event is InputEventKey and p_grab < 0:
 		var ke := event as InputEventKey
 		if ke.pressed and not ke.echo:
 			if ke.keycode == KEY_F:
@@ -1540,7 +1326,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# ПКМ — команда орде
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and not p_being_arrested:
+		if mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			var click_pos := _mouse_world_pos()
 			# Ищем агента (здоровый или коп) рядом с кликом
 			var pick_r2   := 3.5 * 3.5
@@ -1568,7 +1354,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var ke2 := event as InputEventKey
 		if ke2.pressed and not ke2.echo and ke2.keycode == KEY_ALT:
-			if sprinting and _throw_cd <= 0.0 and p_grab < 0 and not p_being_arrested:
+			if sprinting and _throw_cd <= 0.0 and p_grab < 0:
 				_do_throw()
 				get_viewport().set_input_as_handled()
 				return
@@ -1581,99 +1367,30 @@ func _unhandled_input(event: InputEvent) -> void:
 		holding = true
 	elif event.is_action_released("grab"):
 		holding = false
-	elif event.is_action_pressed("restart"):
-		reset_run()
 
 
-# ---------------------------------------------------------------- маршрутный автобус
-func _build_bus_routes() -> void:
-	route_buses.clear()
-	var pts: Array = Array(MapGen.spawn_points)
-	if pts.size() < 8:
+func population_counts() -> Dictionary:
+	var counts := {"healthy": 0, "infected": 0, "latent": 0, "dead": 0, "cops": 0}
+	for current in state:
+		match current:
+			S.HEALTHY: counts.healthy += 1
+			S.COP: counts.cops += 1
+			S.DEAD: counts.dead += 1
+			S.LATENT:
+				counts.infected += 1
+				counts.latent += 1
+			S.INFECTED, S.INFECTED_COP: counts.infected += 1
+	return counts
+
+
+func _finish_run(result: int) -> void:
+	if finished != 0:
 		return
-
-	# 8 радиальных секторов → точки маршрута по внешнему кольцу карты
-	var route: Array = []
-	for sector in 8:
-		var angle := sector * TAU / 8.0
-		var dir   := Vector2(cos(angle), sin(angle))
-		var best_pt := Vector2.ZERO
-		var best_dot := 0.5
-		for p in pts:
-			if (p as Vector2).length() < 25.0:
-				continue
-			var d := (p as Vector2).normalized().dot(dir)
-			if d > best_dot:
-				best_dot = d
-				best_pt  = p
-		if best_pt != Vector2.ZERO:
-			route.append(best_pt)
-
-	if route.size() < 4:
-		return
-
-	# Водитель — первый здоровый уличный агент
-	var driver_idx := -1
-	for i in pos.size():
-		if state[i] == S.HEALTHY and floor_idx[i] == 0 and is_bus_driver[i] == 0:
-			driver_idx = i
-			break
-	if driver_idx < 0:
-		return
-
-	is_bus_driver[driver_idx] = 1
-	pos[driver_idx] = route[0]
-
-	route_buses.append({
-		"pos":       Vector2(route[0]),
-		"vel_angle": 0.0,
-		"route_pts": route,
-		"route_idx": 0,
-		"driver_idx": driver_idx,
-		"stopped":   false,
-		"stop_t":    0.0,
-	})
-
-
-func _tick_route_buses(delta: float) -> void:
-	for bus in route_buses:
-		var drv: int = bus["driver_idx"]
-
-		# Водитель вскрылся или умер — автобус встаёт
-		if drv >= 0 and state[drv] != S.HEALTHY and state[drv] != S.LATENT:
-			is_bus_driver[drv] = 0
-			bus["driver_idx"]  = -1
-			bus["stopped"]     = true
-			drv = -1
-
-		# Водитель в инкубации — автобус замедляется и встаёт
-		if drv >= 0 and state[drv] == S.LATENT:
-			bus["stop_t"] = minf(bus["stop_t"] + delta, Tuning.BUS_STOP_TIME)
-			if bus["stop_t"] >= Tuning.BUS_STOP_TIME:
-				bus["stopped"] = true
-
-		if bus["stopped"]:
-			if drv >= 0:
-				pos[drv] = bus["pos"]
-			continue
-
-		# Движение по маршруту
-		var route: Array   = bus["route_pts"]
-		var next_idx: int  = (bus["route_idx"] + 1) % route.size()
-		var target: Vector2 = route[next_idx]
-		var to_target := target - Vector2(bus["pos"])
-		var dist      := to_target.length()
-
-		var cur_speed := Tuning.BUS_SPEED
-		if bus["stop_t"] > 0.0:
-			cur_speed *= 1.0 - bus["stop_t"] / Tuning.BUS_STOP_TIME
-
-		if dist < 3.0:
-			bus["route_idx"] = next_idx
-		elif dist > 0.01:
-			var dir := to_target.normalized()
-			bus["pos"]       = Vector2(bus["pos"]) + dir * cur_speed * delta
-			bus["vel_angle"] = dir.angle()
-
-		if drv >= 0:
-			pos[drv] = bus["pos"]
+	finished = result
+	_pending_mutation = false
+	holding = false
+	sprinting = false
+	p_grab = -1
+	p_prog = 0.0
+	p_vel = Vector2.ZERO
+	run_finished.emit(result, elapsed)

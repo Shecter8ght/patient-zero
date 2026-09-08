@@ -67,10 +67,6 @@ const COP_MEMORY := 3.0           # помнит цель после потер�
 const COP_RADIO_RADIUS := 12.0    # передаёт тревогу соседям
 const COP_SHOOT_RANGE := 7.0
 const COP_SHOOT_CD := 1.1
-const COP_ARREST_RANGE := 1.6     # схватит игрока при высоком подозрении
-const ARREST_TIME      := 4.0     # секунд до провала ареста
-const QTE_INTERVAL     := 0.75    # как часто меняется клавиша
-const QTE_HIT_PROG     := 0.22    # прогресс за правильное нажатие (~5 нажатий)
 
 # --- Подозрение (0..100) ---
 const SUSP_DECAY := 1.2           # в секунду
@@ -91,20 +87,15 @@ const COP_STATION_RADIUS := 3.0
 # --- Победа ---
 const WIN_RATIO := 1.0
 
-# --- QTE захвата и здоровье ---
-const QTE_WRONG_LIMIT   := 2      # неверных нажатий до срыва захвата
-const GRAB_QTE_INTERVAL := 2.5    # секунд на реакцию (истёк = промах)
-const SUSP_QTE_FAIL     := 18.0   # подозрение при срыве через QTE
+# --- Здоровье ---
 const AGENT_HEALTH          := 3      # попаданий до смерти (тело не добивает — только хедшот)
 const HEADSHOT_CHANCE_COP  := 0.22   # вероятность хедшота у копа
 const HEADSHOT_CHANCE_SWAT := 0.50   # вероятность хедшота у SWAT
-const EVAC_BOARD_INTERVAL  := 1.5    # сек между посадками на один автобус
-const EVAC_PLAYER_BLOCK_R  := 6.0    # радиус вокруг игрока, блокирующий посадку
 
 # --- Бросок (ALT во время спринта) ---
 const THROW_RANGE      := 7.0    # дальность броска (м)
 const THROW_CD         := 5.0    # кулдаун броска (сек)
-const THROW_START_PROG := 0.3    # стартовый прогресс QTE после броска
+const THROW_START_PROG := 0.3    # стартовое сопротивление после броска
 
 # --- Карта ---
 # 4 блока × 20м + 5 улиц × 5м = 105 ≈ WORLD_SIZE; ox = -WORLD_SIZE/2 + MAP_STREET_W
@@ -135,34 +126,28 @@ const ARCH_ELDER      := 2
 const ARCH_BRUTE      := 3
 const ARCH_JOURNALIST := 4
 
-# Порог прогресса QTE для заражения (NORMAL=5 нажатий, CHILD=2, ELDER=7, BRUTE=9, JOURNALIST=5)
-const ARCH_THRESH     := [1.10, 0.44, 1.54, 1.98, 1.10]
 # Множитель скорости паники к CIV_PANIC
 const ARCH_PANIC_MULT := [1.0,  1.6,  0.65, 1.1,  1.0]
 # Доля каждого архетипа (сумма = 1.0)
 const ARCH_FREQ       := [0.60, 0.10, 0.15, 0.10, 0.05]
 
-# --- Роли выживших (10+10+4% от гражданских) ---
+# --- Роли выживших (10+10% от гражданских) ---
 const SURV_NONE      := 0
-const SURV_PANICKER  := 1   # паникёр: всегда паникует, первым бежит к автобусу
-const SURV_HIDER     := 2   # тихушник: прячется, не эвакуируется
-const SURV_ORGANIZER := 3   # организатор: собирает группу и ведёт к автобусу
+const SURV_PANICKER  := 1   # паникёр: не успокаивается после угрозы
+const SURV_HIDER     := 2   # тихушник: короче паникует
 
 const SURV_PANICKER_CHANCE  := 0.10
 const SURV_HIDER_CHANCE     := 0.10
-const SURV_ORGANIZER_CHANCE := 0.04
 
 const HIDER_PANIC_RATE        := 0.30  # паника набирается в N раз медленнее
-const ORGANIZER_RALLY_RAD     := 9.0   # радиус сбора группы (м)
-const ORGANIZER_RALLY_INTERVAL := 5.0  # сек между попытками сбора
-const ORGANIZER_FOLLOW_TIME   := 9.0   # сек следования за организатором
 
 # --- Шкала захвата ---
-const SLIDER_ESCAPE_END   := 0.28   # правый край зоны "вырвался"
-const SLIDER_KILL_START   := 0.72   # левый край зоны "убит"
-const SLIDER_SPEED_BASE   := 1.55   # единиц/сек (0→1→0 = полный цикл)
-const SLIDER_SPEED_ARCH   := [1.0, 0.65, 0.80, 1.85, 1.05]  # по ARCH_*
-const SLIDER_SPEED_RESIST := 1.35   # множитель скорости при скоплении толпы
+const SLIDER_SPEED := 1.15   # одна скорость бегунка для любой цели
+# Границы зон по ARCH_*: [вырвался | заразился | убит].
+# Убийство вероятнее заражения у каждого архетипа.
+# Ребёнка легче заразить; громила чаще всего вырывается.
+const SLIDER_ESCAPE_END_BY_ARCH := [0.34, 0.15, 0.28, 0.60, 0.36]
+const SLIDER_KILL_START_BY_ARCH := [0.59, 0.50, 0.55, 0.75, 0.59]
 const SUSP_KILL_CIV       := 20.0   # подозрение за убийство горожанина
 
 # --- Сопротивление толпы ---
@@ -176,16 +161,6 @@ const RESIST_SUSP_BOOST   := 14.0   # подозрение при атаке т�
 
 const JOURNALIST_PHOTO_TIME := 3.0   # сек до срабатывания фото
 const SUSP_JOURNALIST       := 28.0  # подозрение от фото
-
-# --- Эвакуация ---
-const EVAC_SPOTS := [Vector2(0,-62),Vector2(62,0),Vector2(0,62),Vector2(-62,0)]
-const EVAC_FIRST_TIME  := 60.0   # сек до первой точки эвакуации
-const EVAC_INTERVAL    := 40.0   # сек между появлением новых точек
-const EVAC_RADIUS      := 2.5    # радиус посадки в автобус
-const EVAC_PULL_RANGE  := 30.0   # дальность притяжения к точке
-const EVAC_PULL_SPEED  := 0.6    # скорость движения к эвакуации (м/с)
-const EVAC_POINT_LIFE  := 35.0   # сек до отъезда автобуса
-const EVAC_LOSE_AT     := 30     # поражение если столько убежало
 
 # --- Мутации ---
 const MUT_THRESHOLD       := 25
@@ -222,13 +197,6 @@ const SYN_DESC := [
     "Вся стая сходится на одной цели — лимит двух заражённых снят.",
 ]
 
-# --- Помощь орды при аресте ---
-const COP_RESCUE_RADIUS := 10.0
-
-# --- Маршрутный автобус ---
-const BUS_SPEED     := 6.0
-const BUS_STOP_TIME := 3.5   # сек замедления после заражения водителя
-
 # --- Орда ---
 const HORDE_CMD_DURATION := 15.0   # секунд работы команды MOVE/ATTACK
 const HORDE_ARRIVE_DIST  := 3.0    # дистанция "прибыл к цели"
@@ -249,11 +217,11 @@ const MUT_NAMES := [
 const MUT_DESC := [
 	"Носители вскрываются без крика и паники толпы",
 	"Инкубационный период: 30с → 6с",
-	"Если жертва спиной — нужно всего 1 нажатие QTE",
+	"Если жертва спиной — зона побега почти исчезает",
 	"Радиус начала захвата удвоен",
 	"Спринт больше не повышает подозрение",
 	"После успешного заражения сразу хватаешь ближайшего",
-	"Заражённые передают инфекцию рядом стоящим без QTE (медленно)",
+	"Заражённые медленно передают инфекцию рядом стоящим",
 ]
 
 # --- Телефоны ---

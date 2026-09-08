@@ -4,14 +4,14 @@ extends CanvasLayer
 var sim: Node3D
 var bar:       ProgressBar
 var label:     Label
-var qte_bg:    Panel     # подложка за QTE-клавишей
-var qte_label: Label     # большая клавиша (арест или захват)
 var _menu:     Control   # меню паузы
 var _mut_panel: Control  # панель выбора мутации
 var _headline_panel: Control
 var _headline_label: Label
 var _headline_timer := 0.0
 var _paused    := false
+var _run_revision := 0
+var _dev_menu: Control
 
 var _story_panel:  Control
 var _story_scroll: ScrollContainer
@@ -19,43 +19,14 @@ var _story_text:   RichTextLabel
 
 var _grab_panel:  Control
 var _grab_cursor: ColorRect
+var _grab_zones: Array[ColorRect] = []
+var _grab_zone_target := -1
 
 
 func _ready() -> void:
 	sim   = get_node(sim_path)
 	bar   = $Root/Suspicion
 	label = $Root/Status
-
-	# Подложка QTE — низ по центру
-	qte_bg = Panel.new()
-	qte_bg.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	qte_bg.offset_left   = -60
-	qte_bg.offset_right  =  60
-	qte_bg.offset_top    = -130
-	qte_bg.offset_bottom = -20
-	qte_bg.visible = false
-	var bg_style := StyleBoxFlat.new()
-	bg_style.bg_color = Color(0.05, 0.05, 0.08, 0.82)
-	bg_style.corner_radius_top_left     = 8
-	bg_style.corner_radius_top_right    = 8
-	bg_style.corner_radius_bottom_left  = 8
-	bg_style.corner_radius_bottom_right = 8
-	qte_bg.add_theme_stylebox_override("panel", bg_style)
-	$Root.add_child(qte_bg)
-
-	# QTE-клавиша поверх подложки
-	qte_label = Label.new()
-	qte_label.add_theme_font_size_override("font_size", 72)
-	qte_label.add_theme_color_override("font_color", Color(1.0, 0.18, 0.18))
-	qte_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	qte_label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	qte_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	qte_label.offset_left   = -60
-	qte_label.offset_right  =  60
-	qte_label.offset_top    = -130
-	qte_label.offset_bottom = -20
-	qte_label.visible = false
-	$Root.add_child(qte_label)
 
 	_build_menu()
 	_build_mut_panel()
@@ -67,140 +38,92 @@ func _ready() -> void:
 	sim.run_finished.connect(_on_finished)
 	sim.mutation_available.connect(_on_mutation_available)
 	sim.escalation_triggered.connect(_on_escalation)
+	sim.visuals_reset.connect(_on_run_reset)
 
 
 func _build_menu() -> void:
-	_menu = Control.new()
-	_menu.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dev_menu = preload("res://scripts/development_menu.gd").new()
+	_menu = _dev_menu
+	$Root.add_child(_menu)
+	_dev_menu.resume_requested.connect(func(): _set_paused(false))
+	_dev_menu.restart_requested.connect(_on_restart_pressed)
 	_menu.visible = false
 
-	var overlay := ColorRect.new()
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.color = Color(0.0, 0.0, 0.0, 0.55)
-	_menu.add_child(overlay)
 
-	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_CENTER)
-	box.offset_left   = -100
-	box.offset_right  =  100
-	box.offset_top    =  -60
-	box.offset_bottom =   60
-	box.add_theme_constant_override("separation", 16)
-	_menu.add_child(box)
-
-	var title := Label.new()
-	title.text = "ПАУЗА"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 28)
-	box.add_child(title)
-
-	var btn := Button.new()
-	btn.text = "Перезапустить"
-	btn.pressed.connect(_on_restart_pressed)
-	box.add_child(btn)
-
-	$Root.add_child(_menu)
+func _set_paused(value: bool) -> void:
+	_paused = value
+	_menu.visible = value
+	Engine.time_scale = 0.0 if value else 1.0
+	sim.holding = false
+	sim.sprinting = false
+	if value:
+		$Root.move_child(_menu, -1)
+		_dev_menu.refresh()
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		_paused = not _paused
-		_menu.visible = _paused
-		Engine.time_scale = 0.0 if _paused else 1.0
+		if _story_panel.visible:
+			_story_panel.visible = false
+			_set_paused(true)
+		else:
+			_set_paused(not _paused)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("restart"):
+		_on_restart_pressed()
 		get_viewport().set_input_as_handled()
 
 
 func _on_restart_pressed() -> void:
-	_paused = false
-	_menu.visible = false
-	Engine.time_scale = 1.0
 	sim.reset_run()
 
 
-func _on_stats(healthy: int, infected: int, latent: int, dead: int,
-		cops: int, suspicion: float, arrest_prog: float, qte_key: String, evac_count: int) -> void:
+func _on_run_reset() -> void:
+	_run_revision += 1
+	_set_paused(false)
+	_story_panel.visible = false
+	_mut_panel.visible = false
+	_headline_panel.visible = false
+	_grab_panel.visible = false
+	_grab_zone_target = -1
 
-	if arrest_prog > 0.0:
-		bar.value = arrest_prog * 100.0
-		var hits_left := ceili((1.0 - sim.p_prog) / Tuning.QTE_HIT_PROG)
-		label.text = "ЗАДЕРЖАНИЕ   ещё нажатий: %d   (%.1f сек)   [ПРОБЕЛ — вырваться]" % [
-			hits_left, (1.0 - arrest_prog) * Tuning.ARREST_TIME
-		]
-		var st := bar.get_theme_stylebox("fill").duplicate() as StyleBoxFlat
-		if st:
-			st.bg_color = Color(0.92, 0.15, 0.15)
-			bar.add_theme_stylebox_override("fill", st)
 
-		qte_label.text    = qte_key
-		qte_label.visible = qte_key != ""
-		qte_bg.visible    = qte_key != ""
-	else:
-		qte_label.visible = false
-		qte_bg.visible    = false
+func _on_stats(_healthy: int, infected: int, latent: int, dead: int,
+		cops: int, suspicion: float) -> void:
+	bar.value = suspicion
 
-		bar.value = suspicion
+	var pct := roundi(float(infected + dead) / maxf(1.0, sim.pos.size()) * 100.0)
+	var horde_str := ""
+	match sim.horde_cmd:
+		sim.HC_FOLLOW:
+			horde_str = "\n> ОРДА — СЛЕДОВАТЬ [F — отмена]"
+		sim.HC_HOLD:
+			horde_str = "\n> ОРДА — УДЕРЖАНИЕ [H — отмена]"
+		sim.HC_ATTACK:
+			var ta: int = sim.horde_target_agent
+			var lbl := "КОП" if (ta >= 0 and sim.state[ta] == sim.S.COP) else "ЦЕЛЬ"
+			horde_str = "\n> ОРДА — АТАКА %s (%.0f сек)" % [lbl, sim.horde_target_life]
+		sim.HC_MOVE:
+			horde_str = "\n> ОРДА — ДВИЖЕНИЕ (%.0f сек)" % sim.horde_target_life
+	var mins := int(sim.elapsed) / 60
+	var secs := int(sim.elapsed) % 60
+	var time_str := "%d:%02d" % [mins, secs] if mins > 0 else "%d сек" % secs
+	label.text = (
+		"Охват города: %d%%   Активных: %d   Без симптомов: %d   [%s]\n" +
+		"Мертвых: %d   Полиции: %d   Подозрение: %d\n" +
+		"Охват = заражённые + погибшие. Цель: %d%%\n" +
+		"ЛКМ захват   ПКМ движение/атака   F следовать   H удержание   Esc пауза"
+	) % [pct, infected - latent, latent, time_str, dead, cops, roundi(suspicion),
+		roundi(Tuning.WIN_RATIO * 100.0)] + horde_str
 
-		var total := healthy + infected + dead
-		var pct   := 0
-		if total > 0:
-			pct = roundi(float(infected + dead) / float(total) * 100.0)
-		var evac_warn := "(!)" if evac_count > Tuning.EVAC_LOSE_AT * 0.6 else ""
-
-		# Направление на ближайший автобус
-		var bus_str := ""
-		if not sim.evac_points.is_empty():
-			var nearest_d := INF
-			var nearest_pos := Vector2.ZERO
-			for ep in sim.evac_points:
-				var d2: float = sim.p_pos.distance_squared_to(ep["pos"])
-				if d2 < nearest_d:
-					nearest_d   = d2
-					nearest_pos = ep["pos"]
-			var dist_m := sqrt(nearest_d)
-			var dir    : Vector2 = nearest_pos - sim.p_pos
-			var deg    := fmod(rad_to_deg(dir.angle()) + 360.0, 360.0)
-			var compass: String
-			if   deg < 22.5  or deg >= 337.5: compass = "→"
-			elif deg < 67.5:                   compass = "↘"
-			elif deg < 112.5:                  compass = "↓"
-			elif deg < 157.5:                  compass = "↙"
-			elif deg < 202.5:                  compass = "←"
-			elif deg < 247.5:                  compass = "↖"
-			elif deg < 292.5:                  compass = "↑"
-			else:                              compass = "↗"
-			bus_str = "   АВТОБУС %s %.0fм" % [compass, dist_m]
-
-		var horde_str := ""
-		match sim.horde_cmd:
-			sim.HC_FOLLOW:
-				horde_str = "\n> ОРДА — СЛЕДОВАТЬ [F — отмена]"
-			sim.HC_HOLD:
-				horde_str = "\n> ОРДА — УДЕРЖАНИЕ [H — отмена]"
-			sim.HC_ATTACK:
-				var ta: int = sim.horde_target_agent
-				var lbl := "КОП" if (ta >= 0 and sim.state[ta] == sim.S.COP) else "ЦЕЛЬ"
-				horde_str = "\n> ОРДА — АТАКА %s (%.0f сек)" % [lbl, sim.horde_target_life]
-			sim.HC_MOVE:
-				horde_str = "\n> ОРДА — ДВИЖЕНИЕ (%.0f сек)" % sim.horde_target_life
-		var mins := int(sim.elapsed) / 60
-		var secs := int(sim.elapsed) % 60
-		var time_str := "%d:%02d" % [mins, secs] if mins > 0 else "%d сек" % secs
-		label.text = (
-			"Заражено: %d%%   Активных: %d   Инкуб: %d   [%s]\n" +
-			"Мертвых: %d   Полиции: %d   Подозрение: %d\n" +
-			"Эвакуировалось: %d / %d %s%s\n" +
-			"ЛКМ захват   ПКМ движение/атака   F следовать   H удержание   Esc пауза"
-		) % [pct, infected, latent, time_str, dead, cops, roundi(suspicion),
-			evac_count, Tuning.EVAC_LOSE_AT, evac_warn, bus_str] + horde_str
-
-		var st := bar.get_theme_stylebox("fill").duplicate() as StyleBoxFlat
-		if st:
-			st.bg_color = (
-				Color(0.89, 0.29, 0.29) if suspicion > 70.0
-				else (Color(0.94, 0.62, 0.15) if suspicion > 35.0
-				else Color(0.39, 0.60, 0.13))
-			)
-			bar.add_theme_stylebox_override("fill", st)
+	var st := bar.get_theme_stylebox("fill").duplicate() as StyleBoxFlat
+	if st:
+		st.bg_color = (
+			Color(0.89, 0.29, 0.29) if suspicion > 70.0
+			else (Color(0.94, 0.62, 0.15) if suspicion > 35.0
+			else Color(0.39, 0.60, 0.13))
+		)
+		bar.add_theme_stylebox_override("fill", st)
 
 
 func _build_mut_panel() -> void:
@@ -357,24 +280,21 @@ func _build_grab_slider() -> void:
 	_grab_panel.add_child(bg)
 
 	# Три зоны бара
-	var esc_w  := int(Tuning.SLIDER_ESCAPE_END  * BAR_W)
-	var inf_w  := int((Tuning.SLIDER_KILL_START - Tuning.SLIDER_ESCAPE_END) * BAR_W)
-	var kill_w := BAR_W - esc_w - inf_w
 	var zone_data := [
-		[0,             esc_w,  Color(0.70, 0.12, 0.12), "ВЫРВАЛСЯ"],
-		[esc_w,         inf_w,  Color(0.12, 0.60, 0.18), "ЗАРАЗИЛСЯ"],
-		[esc_w + inf_w, kill_w, Color(0.35, 0.08, 0.50), "УБИТ"],
+		[Color(0.70, 0.12, 0.12), "ВЫРВАЛСЯ"],
+		[Color(0.12, 0.60, 0.18), "ЗАРАЗИЛСЯ"],
+		[Color(0.35, 0.08, 0.50), "УБИТ"],
 	]
 	for zd in zone_data:
 		var z := ColorRect.new()
-		z.color    = zd[2]
-		z.position = Vector2(zd[0], 0)
-		z.size     = Vector2(zd[1], BAR_H)
+		z.color = zd[0]
+		z.size = Vector2(1, BAR_H)
 		_grab_panel.add_child(z)
+		_grab_zones.append(z)
 		var lbl := Label.new()
-		lbl.text = zd[3]
+		lbl.text = zd[1]
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.add_theme_font_size_override("font_size", 11)
+		lbl.add_theme_font_size_override("font_size", 9)
 		lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
 		lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
 		z.add_child(lbl)
@@ -397,6 +317,16 @@ func _build_grab_slider() -> void:
 	_grab_panel.add_child(hint)
 
 	$Root.add_child(_grab_panel)
+	_update_grab_zones(Tuning.ARCH_NORMAL, false)
+
+
+func _update_grab_zones(arch: int, backstab: bool) -> void:
+	const BAR_W := 360.0
+	var bounds: Vector2 = sim.slider_bounds(arch, backstab)
+	var edges := [0.0, bounds.x, bounds.y, 1.0]
+	for i in 3:
+		_grab_zones[i].position.x = edges[i] * BAR_W
+		_grab_zones[i].size.x = (edges[i + 1] - edges[i]) * BAR_W
 
 
 func _process(delta: float) -> void:
@@ -406,24 +336,32 @@ func _process(delta: float) -> void:
 			_headline_panel.visible = false
 
 	# Шкала захвата
-	var show_slider: bool = sim.p_grab >= 0 and not sim.p_being_arrested
+	var show_slider: bool = sim.finished == 0 and not _paused and sim.p_grab >= 0
 	_grab_panel.visible = show_slider
 	if show_slider and _grab_cursor:
+		if _grab_zone_target != sim.p_grab:
+			_grab_zone_target = sim.p_grab
+			_update_grab_zones(sim.archetype[sim.p_grab], sim._backstab_applied)
 		_grab_cursor.position.x = sim._slider_pos * 356.0 - 2.0
+	else:
+		_grab_zone_target = -1
 
 
 func _on_finished(result: int, seconds: float) -> void:
-	qte_label.visible = false
-	qte_bg.visible    = false
 	label.text = (
 		"ГОРОД ПАЛ за %.0f сек" % seconds if result == 1
-		else ("ЭВАКУАЦИЯ — слишком много сбежало" if result == 3
-		else "ВЫЧИСЛЕН — конец")
+		else "УНИЧТОЖЕН — конец"
 	)
-	await get_tree().create_timer(1.5).timeout
+	_mut_panel.visible = false
+	_grab_panel.visible = false
+	var revision := _run_revision
+	await get_tree().create_timer(1.5, true, false, true).timeout
+	if revision != _run_revision or sim.finished != result:
+		return
 	_build_story_text(result)
 	_story_panel.visible = true
-	_menu.visible        = true
+	_set_paused(true)
+	$Root.move_child(_story_panel, -1)
 
 
 func _build_story_panel() -> void:
@@ -495,8 +433,7 @@ func _build_story_text(result: int) -> void:
 
 	match result:
 		1: txt += "[color=#e84040][b]▼ ГОРОД ПАЛ ▼[/b][/color]\n"
-		2: txt += "[color=#e8a040][b]▼ ВЫЧИСЛЕН ▼[/b][/color]\n"
-		_: txt += "[color=#40e880][b]▼ ЭВАКУАЦИЯ УДАЛАСЬ ▼[/b][/color]\n"
+		2: txt += "[color=#e8a040][b]▼ УНИЧТОЖЕН ▼[/b][/color]\n"
 
 	txt += "Время: [b]%.0f сек[/b] · Заражено: [b]%d[/b] из [b]%d[/b]\n\n" % [
 		sim.elapsed, _count_infected(n), n
@@ -667,7 +604,7 @@ func _build_story_text(result: int) -> void:
 func _count_infected(n: int) -> int:
 	var c := 0
 	for i in n:
-		if sim.state[i] != 0:   # 0 = HEALTHY
+		if sim.infected_by[i] != -3:
 			c += 1
 	return c
 
@@ -676,7 +613,7 @@ func _find_first_victim(n: int) -> int:
 	var best   := -1
 	var best_t := INF
 	for i in n:
-		if sim.infected_at[i] > 0.0 and sim.infected_at[i] < best_t:
+		if sim.infected_by[i] != -3 and sim.infected_at[i] < best_t:
 			best_t = sim.infected_at[i]
 			best   = i
 	return best

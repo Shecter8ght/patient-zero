@@ -1,7 +1,7 @@
 extends Node3D
 ## One skeletal player; the crowd uses GPU bone animation instead.
 const MODEL = preload("res://assets/animations/patient_zero_rigged.glb")
-const LOOPS := ["idle", "walk", "run", "zombie_idle", "zombie_walk", "zombie_run", "bite", "grab", "resist", "arrested", "phone", "photo"]
+const LOOPS := ["idle", "walk", "run", "zombie_idle", "zombie_walk", "zombie_run", "bite", "grab", "resist", "phone", "photo"]
 @export var sim_path: NodePath
 var sim: Node3D
 var animation: AnimationPlayer
@@ -10,7 +10,6 @@ var clips: Dictionary = {}
 var current_clip := ""
 var one_shot := ""
 var one_shot_left := 0.0
-var previous_arrest := false
 var previous_throw := 0.0
 var previous_elapsed := 0.0
 
@@ -40,7 +39,6 @@ func _collect(node: Node) -> void:
 func _process(delta: float) -> void:
 	if sim == null: return
 	if sim.elapsed < previous_elapsed:
-		previous_arrest = false
 		previous_throw = 0.0
 		one_shot_left = 0.0
 		current_clip = ""
@@ -49,17 +47,12 @@ func _process(delta: float) -> void:
 	if sim.finished != 0:
 		animation.pause()
 		return
-	if previous_arrest and not sim.p_being_arrested:
-		one_shot = "break_free"
-		one_shot_left = animation.get_animation(clips[one_shot]).length
 	if sim._throw_cd > previous_throw + 0.1:
 		one_shot = "lunge"
 		one_shot_left = animation.get_animation(clips[one_shot]).length
-	previous_arrest = sim.p_being_arrested
 	previous_throw = sim._throw_cd
 	var desired := "zombie_idle"
-	if sim.p_being_arrested: desired = "arrested"
-	elif one_shot_left > 0.0: desired = one_shot
+	if one_shot_left > 0.0: desired = one_shot
 	elif sim.p_grab >= 0: desired = "bite"
 	elif sim.p_vel.length_squared() > 0.04: desired = "zombie_run" if sim.sprinting else "zombie_walk"
 	one_shot_left = maxf(0.0, one_shot_left - delta)
