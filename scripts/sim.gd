@@ -91,6 +91,8 @@ var infected_at:    PackedFloat32Array
 var infected_where: PackedVector2Array
 var spread_count:   PackedInt32Array      # сколько других заразил агент
 var dest:           PackedVector2Array    # текущая точка назначения горожанина
+var nav_stuck:      PackedFloat32Array    # сек без прогресса к цели
+var nav_best:       PackedFloat32Array    # лучшая (наименьшая) достигнутая дистанция до цели
 var _id_rng        := RandomNumberGenerator.new()
 var _last_infector := -3                  # выставлять перед каждым _infect()
 
@@ -125,6 +127,8 @@ func reset_run() -> void:
 	infected_by.resize(n); infected_at.resize(n)
 	infected_where.resize(n); spread_count.resize(n)
 	dest.resize(n)
+	nav_stuck.resize(n);   nav_stuck.fill(0.0)
+	nav_best.resize(n);    nav_best.fill(INF)
 	identities.clear();    identities.resize(n)
 	survivor_role.resize(n);   survivor_role.fill(0)
 	_id_rng.randomize()
@@ -1120,6 +1124,8 @@ func _tick_civilian(i: int, delta: float) -> void:
 
 
 func _pick_dest(i: int) -> void:
+	nav_stuck[i] = 0.0
+	nav_best[i]  = INF
 	var fl := floor_idx[i]
 	if fl == 0:
 		var pts := MapGen.spawn_points
@@ -1143,38 +1149,59 @@ func _pick_dest(i: int) -> void:
 			dest[i] = pos[i]
 
 
+## Возвращает свободное направление, огибающее препятствие, или Vector2.ZERO,
+## если во всём веере впереди стена. Пробуем от прямого курса к всё большим углам.
+func _steer_clear(i: int, want_dir: Vector2) -> Vector2:
+	var fl := floor_idx[i]
+	for a: float in Tuning.NAV_FAN_ANGLES:
+		var d := want_dir.rotated(a)
+		if not MapGen.is_blocked(pos[i] + d * Tuning.NAV_PROBE_DIST, 0.3, fl):
+			return d
+	return Vector2.ZERO
+
+
 func _walk_to_dest(i: int, delta: float) -> void:
 	if dest[i] == Vector2.ZERO:
 		_pick_dest(i)
 		return
 	var to_dest := dest[i] - pos[i]
-	if to_dest.length_squared() < 2.25:   # прибыл (1.5м)
+	var dist := to_dest.length()
+	if dist < 1.5:   # прибыл
 		_pick_dest(i)
 		return
-	var want_dir := to_dest.normalized()
-	# Если прямо стена — попробовать обойти влево или вправо
-	var ahead := pos[i] + want_dir * 2.0
-	if MapGen.is_blocked(ahead, 0.3, floor_idx[i]):
-		var left  := want_dir.rotated(-PI * 0.4)
-		var right := want_dir.rotated(PI * 0.4)
-		var la    := pos[i] + left * 2.0
-		var ra    := pos[i] + right * 2.0
-		if not MapGen.is_blocked(la, 0.3, floor_idx[i]):
-			want_dir = left
-		elif not MapGen.is_blocked(ra, 0.3, floor_idx[i]):
-			want_dir = right
-		else:
-			_pick_dest(i)   # зашли в тупик — сменить цель
+
+	# Прогресс к цели: приблизился — сбрасываем таймер застревания.
+	if dist < nav_best[i] - Tuning.NAV_PROGRESS_EPS:
+		nav_best[i]  = dist
+		nav_stuck[i] = 0.0
+	else:
+		nav_stuck[i] += delta
+		if nav_stuck[i] >= Tuning.NAV_REPICK_TIME:
+			_pick_dest(i)   # долго топчемся — другая цель разблокирует
 			return
+
+	var want_dir := to_dest / dist
+	var steer := _steer_clear(i, want_dir)
+	if steer == Vector2.ZERO:
+		# Со всех сторон стена — считаем это застреванием, но не стоим на месте.
+		nav_stuck[i] += delta
+		if nav_stuck[i] >= Tuning.NAV_REPICK_TIME:
+			_pick_dest(i)
+		return
 	var spd: float = float(Tuning.CIV_WALK) * float(Tuning.ARCH_PANIC_MULT[archetype[i]])
-	vel[i] = vel[i].move_toward(want_dir * spd, Tuning.ACCEL * 0.5 * delta)
-	facing[i] = want_dir.angle()
+	vel[i] = vel[i].move_toward(steer * spd, Tuning.ACCEL * 0.5 * delta)
+	facing[i] = steer.angle()
 
 
 func _wander(i: int, delta: float, speed: float) -> void:
-	var ahead := pos[i] + Vector2.RIGHT.rotated(facing[i]) * 2.0
-	if MapGen.is_blocked(ahead, 0.3, floor_idx[i]):
-		facing[i] += PI * 0.5 + randf_range(-0.5, 0.5)
+	var fwd := Vector2.RIGHT.rotated(facing[i])
+	if MapGen.is_blocked(pos[i] + fwd * Tuning.NAV_PROBE_DIST, 0.3, floor_idx[i]):
+		# Ищем свободный сектор веером, а не слепым поворотом на 90°.
+		var steer := _steer_clear(i, fwd)
+		if steer != Vector2.ZERO:
+			facing[i] = steer.angle()
+		else:
+			facing[i] += PI + randf_range(-0.5, 0.5)   # тупик — разворот
 	elif randf() < delta * 0.6:
 		facing[i] += randf_range(-1.0, 1.0)
 	var want := Vector2.RIGHT.rotated(facing[i]) * speed
@@ -1182,9 +1209,13 @@ func _wander(i: int, delta: float, speed: float) -> void:
 
 
 func _patrol(i: int, delta: float) -> void:
-	var ahead := pos[i] + Vector2.RIGHT.rotated(facing[i]) * 2.0
-	if MapGen.is_blocked(ahead, 0.3, floor_idx[i]):
-		facing[i] += PI * 0.5 + randf_range(-0.3, 0.3)
+	var fwd := Vector2.RIGHT.rotated(facing[i])
+	if MapGen.is_blocked(pos[i] + fwd * Tuning.NAV_PROBE_DIST, 0.3, floor_idx[i]):
+		var steer := _steer_clear(i, fwd)
+		if steer != Vector2.ZERO:
+			facing[i] = steer.angle()
+		else:
+			facing[i] += PI + randf_range(-0.3, 0.3)
 	elif randf() < delta * 0.4:
 		facing[i] += randf_range(-0.9, 0.9)
 	var patrol_spd := Tuning.SWAT_SPEED if is_swat[i] == 1 else Tuning.COP_SPEED

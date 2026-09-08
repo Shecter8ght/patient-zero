@@ -247,6 +247,13 @@ const SWAT_SPEED        := 4.8
 const SWAT_GRAB_MULT    := 5.0
 const SWAT_THRESH_LEVEL := 2
 
+# --- Навигация NPC ---
+const NAV_PROBE_DIST := 2.5    # на сколько метров вперёд щупаем препятствие
+# Веер отклонений (рад): пробуем прямо, потом всё шире — огибание длинных стен.
+const NAV_FAN_ANGLES := [0.0, 0.52, -0.52, 1.05, -1.05, 1.57, -1.57, 2.10, -2.10]
+const NAV_REPICK_TIME := 5.0   # сек без прогресса к цели → сменить цель
+const NAV_PROGRESS_EPS := 0.5  # приблизился к цели хотя бы на столько → не застрял
+
 # --- Visual animation (seconds and m/s; does not change simulation balance) ---
 const ANIM_BLEND_TIME := 0.12
 const ANIM_RUN_THRESHOLD := 2.5
