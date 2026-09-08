@@ -109,6 +109,7 @@ signal horde_commanded(world_pos: Vector2)
 signal bark_event(agent: int, cat: String, pos2: Vector2, fl: int)
 signal blood_hit(at: Vector2, fl: int, lethal: bool, direction: Vector2)
 signal visuals_reset
+signal door_toggled(floor: int, di: int, is_open: bool)
 
 
 func _ready() -> void:
@@ -139,6 +140,7 @@ func reset_run() -> void:
 	_last_infector = -3
 
 	MapGen.generate()
+	MapGen.reset_doors()
 
 	# -------- распределение агентов --------
 	# 50 — улица, 200 — ТЦ, остальные — интерьеры зданий
@@ -820,9 +822,10 @@ func _tick_infected(i: int, delta: float) -> void:
 				# Кольцо вокруг игрока (золотое сечение → равномерное распределение)
 				var angle := fposmod(float(i) * 2.399, TAU)
 				var follow_pos := p_pos + Vector2.RIGHT.rotated(angle) * Tuning.HORDE_FOLLOW_DIST
-				var to_f := follow_pos - pos[i]
-				if to_f.length() > 1.5:
-					vel[i] = vel[i].lerp(to_f.normalized() * speed, 0.12)
+				if follow_pos.distance_to(pos[i]) > 1.5:
+					var dir := _steer_goal(i, follow_pos)
+					if dir != Vector2.ZERO:
+						vel[i] = vel[i].lerp(dir * speed, 0.12)
 				else:
 					vel[i] = vel[i].move_toward(Vector2.ZERO, Tuning.ACCEL * delta)
 				_try_grab_nearby(i)
@@ -832,9 +835,10 @@ func _tick_infected(i: int, delta: float) -> void:
 				# Рассредоточиться по зоне и хватать входящих
 				var angle := fposmod(float(i) * 2.399, TAU)
 				var hold_pos := horde_target + Vector2.RIGHT.rotated(angle) * Tuning.HORDE_HOLD_RADIUS * 0.6
-				var to_h := hold_pos - pos[i]
-				if to_h.length() > 2.0:
-					vel[i] = vel[i].lerp(to_h.normalized() * speed * 0.55, 0.08)
+				if hold_pos.distance_to(pos[i]) > 2.0:
+					var dir := _steer_goal(i, hold_pos)
+					if dir != Vector2.ZERO:
+						vel[i] = vel[i].lerp(dir * speed * 0.55, 0.08)
 				else:
 					vel[i] = vel[i].move_toward(Vector2.ZERO, Tuning.ACCEL * delta)
 				_try_grab_nearby(i)
@@ -848,9 +852,10 @@ func _tick_infected(i: int, delta: float) -> void:
 						move_to = pos[ta]
 					else:
 						horde_target_agent = -1
-				var to_target := move_to - pos[i]
-				if to_target.length() > Tuning.HORDE_ARRIVE_DIST:
-					vel[i] = vel[i].lerp(to_target.normalized() * speed, 0.12)
+				if move_to.distance_to(pos[i]) > Tuning.HORDE_ARRIVE_DIST:
+					var dir := _steer_goal(i, move_to)
+					if dir != Vector2.ZERO:
+						vel[i] = vel[i].lerp(dir * speed, 0.12)
 					_try_grab_nearby(i)
 					return
 
@@ -858,12 +863,31 @@ func _tick_infected(i: int, delta: float) -> void:
 	var target := _choose_auto_target(i)
 	if target >= 0:
 		var to := pos[target] - pos[i]
-		vel[i] = vel[i].move_toward(to.normalized() * speed, Tuning.ACCEL * delta)
+		var dir := _steer_goal(i, pos[target])
+		if dir != Vector2.ZERO:
+			vel[i] = vel[i].move_toward(dir * speed, Tuning.ACCEL * delta)
 		if to.length() < Tuning.GRAB_RANGE:
 			grab_target[i] = target
 			grab_prog[i]   = 0.0
 	else:
 		_wander(i, delta, speed * 0.5)
+
+
+## Направление к цели с учётом стен: на этажах ТЦ ведёт через ближайшую дверь
+## (первый вейпоинт mall_path), затем веером огибает препятствие.
+func _steer_goal(i: int, goal: Vector2) -> Vector2:
+	var aim := goal
+	var fl := floor_idx[i]
+	if fl >= 1 and fl <= Tuning.MALL_FLOORS:
+		var path := MapGen.mall_path(pos[i], goal, fl)
+		if path.size() > 0:
+			aim = path[0]
+	var to := aim - pos[i]
+	if to.length_squared() < 0.0001:
+		return Vector2.ZERO
+	var dir := to.normalized()
+	var steer := _steer_clear(i, dir)
+	return steer if steer != Vector2.ZERO else dir
 
 
 func _try_grab_nearby(i: int) -> void:
@@ -1149,7 +1173,7 @@ func _pick_dest(i: int) -> void:
 		if dest[i] == Vector2.ZERO:
 			dest[i] = MapGen.mall_interior.get_center()
 		# Путь по комнатам ТЦ через двери.
-		nav_path[i] = MapGen.mall_path(pos[i], dest[i])
+		nav_path[i] = MapGen.mall_path(pos[i], dest[i], fl)
 		nav_pidx[i] = 0
 		return
 	else:
@@ -1309,6 +1333,18 @@ func _mouse_world_pos() -> Vector2:
 	return Vector2(hit.x, hit.z)
 
 
+## Игрок переключает ближайшую дверь ТЦ (E). Створка блокирует всех и путь.
+func _toggle_nearest_door() -> void:
+	if p_floor < 1 or p_floor > Tuning.MALL_FLOORS:
+		return
+	var di := MapGen.nearest_door(p_pos, p_floor, Tuning.DOOR_REACH)
+	if di < 0:
+		return
+	var now_open := MapGen.is_door_open(p_floor, di)
+	MapGen.set_door(p_floor, di, not now_open)
+	door_toggled.emit(p_floor, di, not now_open)
+
+
 func _do_throw() -> void:
 	var best   := -1
 	var best_d := Tuning.THROW_RANGE * Tuning.THROW_RANGE
@@ -1384,6 +1420,11 @@ func _unhandled_input(event: InputEvent) -> void:
 					horde_commanded.emit(horde_target)
 				get_viewport().set_input_as_handled()
 				return
+			elif ke.keycode == KEY_E:
+				_toggle_nearest_door()
+				get_viewport().set_input_as_handled()
+				return
+
 
 	# ПКМ — команда орде
 	if event is InputEventMouseButton:

@@ -22,6 +22,7 @@ var _bldg_roof_mats:  Array   # Array[StandardMaterial3D]
 var _bldg_rects:      Array   # Array[Rect2]
 var _horde_marker: MeshInstance3D = null
 var _horde_mat:    StandardMaterial3D = null
+var _mall_door_nodes: Array = []   # [floor] -> Array[MeshInstance3D] по di
 
 const FADE_DIST   := 16.0  # дистанция начала затухания (метры)
 const ALPHA_NEAR  := 0.12  # прозрачность у стены/крыши
@@ -68,6 +69,11 @@ func _process(delta: float) -> void:
 	_mall_exterior.visible = (pfl == 0)
 	for fl in Tuning.MALL_FLOORS:
 		_floor_nodes[fl].visible = (pfl == fl + 1)
+		# Створки видны, когда дверь закрыта.
+		if fl < _mall_door_nodes.size():
+			var dnodes: Array = _mall_door_nodes[fl]
+			for di in dnodes.size():
+				(dnodes[di] as MeshInstance3D).visible = not MapGen.is_door_open(fl + 1, di)
 
 	# Затухание стен и крыш по близости к игроку
 	for i in _bldg_wall_mats.size():
@@ -318,6 +324,26 @@ func _render_mall_walls(parent: Node3D, fl: int) -> void:
 		var c := w.get_center()
 		mi.position = Vector3(c.x, wall_h * 0.5, c.y)
 		parent.add_child(mi)
+
+	# Створки дверей: показываются, когда дверь закрыта.
+	var door_mat := StandardMaterial3D.new()
+	door_mat.albedo_color = Color(0.52, 0.34, 0.18)
+	door_mat.roughness = 0.7
+	var door_h := 2.3
+	var nodes: Array = []
+	for door: Dictionary in MapGen.mall_doors:
+		var plug: Rect2 = door["plug"]
+		var leaf := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(maxf(plug.size.x, 0.2), door_h, maxf(plug.size.y, 0.2))
+		leaf.mesh = box
+		leaf.material_override = door_mat
+		var c := plug.get_center()
+		leaf.position = Vector3(c.x, door_h * 0.5, c.y)
+		leaf.visible = false
+		parent.add_child(leaf)
+		nodes.append(leaf)
+	_mall_door_nodes.append(nodes)
 
 
 func _mall_label(parent: Node3D, title: String, position3: Vector3, color: Color, pixel_size: float) -> void:

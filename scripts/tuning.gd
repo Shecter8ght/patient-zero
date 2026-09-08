@@ -29,12 +29,12 @@ const GRID_CELL := 4.0            # ячейка пространственно�
 # --- Скорости (м/с) ---
 # Заражённый МЕДЛЕННЕЕ бегущего горожанина, но не устаёт. Это ядро напряжения.
 const CIV_WALK := 1.5
-const CIV_PANIC := 4.2
+const CIV_PANIC := 5.0            # паника ВЫШЕ любого зомби: бегущего не догнать
 const PLAYER_WALK := 2.1
 const PLAYER_SPRINT := 4.6
 const INFECTED_SPEED := 3.2
 const COP_SPEED := 3.1
-const INFECTED_COP_SPEED := 4.0
+const INFECTED_COP_SPEED := 3.7   # даже обращённый мент медленнее паникующего
 
 const ACCEL := 12.0               # сглаживание разгона
 const KNOCKBACK_SPEED := 3.0      # рывок при срыве захвата (с потолком!)
@@ -126,8 +126,8 @@ const ARCH_ELDER      := 2
 const ARCH_BRUTE      := 3
 const ARCH_JOURNALIST := 4
 
-# Множитель скорости паники к CIV_PANIC
-const ARCH_PANIC_MULT := [1.0,  1.6,  0.65, 1.1,  1.0]
+# Множитель скорости паники к CIV_PANIC (даже старик 5.0*0.82=4.1 > зомби 3.7)
+const ARCH_PANIC_MULT := [1.0,  1.6,  0.82, 1.1,  1.0]
 # Доля каждого архетипа (сумма = 1.0)
 const ARCH_FREQ       := [0.60, 0.10, 0.15, 0.10, 0.05]
 
@@ -251,6 +251,7 @@ const SWAT_THRESH_LEVEL := 2
 const MALL_ATRIUM_HALF := 6.0    # полуширина центральных проходов-крестовины
 const MALL_ROOM_WALL_T := 0.4    # толщина внутренних стен комнат
 const MALL_DOOR_W      := 2.4    # ширина дверного проёма
+const DOOR_REACH       := 3.5    # радиус, в котором игрок может тронуть дверь (E)
 
 # --- Навигация NPC ---
 const NAV_PROBE_DIST := 2.5    # на сколько метров вперёд щупаем препятствие

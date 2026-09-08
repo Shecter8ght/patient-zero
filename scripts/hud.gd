@@ -6,9 +6,8 @@ var bar:       ProgressBar
 var label:     Label
 var _menu:     Control   # меню паузы
 var _mut_panel: Control  # панель выбора мутации
-var _headline_panel: Control
-var _headline_label: Label
-var _headline_timer := 0.0
+var _ticker: VBoxContainer         # строка состояния: неблокирующие уведомления
+var _ticker_msgs: Array = []       # [{ctrl: Control, t: float, dur: float}]
 var _paused    := false
 var _run_revision := 0
 var _dev_menu: Control
@@ -30,7 +29,7 @@ func _ready() -> void:
 
 	_build_menu()
 	_build_mut_panel()
-	_build_headline_panel()
+	_build_ticker()
 	_build_story_panel()
 	_build_grab_slider()
 
@@ -39,6 +38,7 @@ func _ready() -> void:
 	sim.mutation_available.connect(_on_mutation_available)
 	sim.escalation_triggered.connect(_on_escalation)
 	sim.visuals_reset.connect(_on_run_reset)
+	sim.door_toggled.connect(_on_door_toggled)
 
 
 func _build_menu() -> void:
@@ -83,9 +83,15 @@ func _on_run_reset() -> void:
 	_set_paused(false)
 	_story_panel.visible = false
 	_mut_panel.visible = false
-	_headline_panel.visible = false
+	_clear_ticker()
 	_grab_panel.visible = false
 	_grab_zone_target = -1
+
+
+func _clear_ticker() -> void:
+	for m: Dictionary in _ticker_msgs:
+		(m["ctrl"] as Control).queue_free()
+	_ticker_msgs.clear()
 
 
 func _on_stats(_healthy: int, infected: int, latent: int, dead: int,
@@ -218,47 +224,65 @@ func _on_mutation_chosen(mid: int) -> void:
 	_mut_panel.visible = false
 
 
-func _build_headline_panel() -> void:
-	_headline_panel = Control.new()
-	_headline_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_headline_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_headline_panel.visible = false
+func _build_ticker() -> void:
+	# Строка состояния: стопка коротких уведомлений вверху по центру.
+	# Не затемняет экран, не ловит ввод, не ставит паузу.
+	_ticker = VBoxContainer.new()
+	_ticker.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_ticker.offset_left   = -320
+	_ticker.offset_right  =  320
+	_ticker.offset_top    =   12
+	_ticker.alignment = BoxContainer.ALIGNMENT_CENTER
+	_ticker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ticker.add_theme_constant_override("separation", 4)
+	$Root.add_child(_ticker)
 
-	var bg := ColorRect.new()
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color(0.06, 0.04, 0.04, 0.88)
-	_headline_panel.add_child(bg)
 
-	_headline_label = Label.new()
-	_headline_label.set_anchors_preset(Control.PRESET_CENTER)
-	_headline_label.offset_left   = -420
-	_headline_label.offset_right  =  420
-	_headline_label.offset_top    =  -44
-	_headline_label.offset_bottom =   44
-	_headline_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_headline_label.add_theme_font_size_override("font_size", 28)
-	_headline_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.3))
-	_headline_panel.add_child(_headline_label)
+func _push_ticker(text: String, color: Color, dur: float) -> void:
+	# Панелька с текстом; полупрозрачный фон только под строкой.
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.05, 0.08, 0.72)
+	sb.set_content_margin_all(6)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.corner_radius_top_left = 4
+	sb.corner_radius_top_right = 4
+	sb.corner_radius_bottom_left = 4
+	sb.corner_radius_bottom_right = 4
+	panel.add_theme_stylebox_override("panel", sb)
 
-	$Root.add_child(_headline_panel)
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_color_override("font_color", color)
+	panel.add_child(lbl)
+
+	_ticker.add_child(panel)
+	_ticker_msgs.append({"ctrl": panel, "t": dur, "dur": dur})
+
+	# Не больше 4 строк — старейшую убираем.
+	while _ticker_msgs.size() > 4:
+		var old: Dictionary = _ticker_msgs.pop_front()
+		(old["ctrl"] as Control).queue_free()
 
 
 func _on_escalation(level: int, headline: String) -> void:
 	if level == -2:
-		# Синтез мутаций
-		_headline_label.text = "★  %s  ★" % headline
-		_headline_label.add_theme_color_override("font_color", Color(0.4, 1.0, 0.65))
-		_headline_timer = Tuning.ESC_HEADLINE_DUR * 1.8
+		_push_ticker("★ СИНТЕЗ: %s" % headline, Color(0.4, 1.0, 0.65), Tuning.ESC_HEADLINE_DUR * 1.8)
 	elif level == -1:
-		# Объявление эвакуации
-		_headline_label.text = "[!]  %s  [!]" % headline
-		_headline_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.1))
-		_headline_timer = Tuning.ESC_HEADLINE_DUR
+		_push_ticker("[!] %s" % headline, Color(1.0, 0.5, 0.1), Tuning.ESC_HEADLINE_DUR)
 	else:
-		_headline_label.text = "[ГАЗЕТА]  %s" % headline
-		_headline_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.3))
-		_headline_timer = Tuning.ESC_HEADLINE_DUR
-	_headline_panel.visible = true
+		_push_ticker("[ГАЗЕТА] %s" % headline, Color(1.0, 0.92, 0.3), Tuning.ESC_HEADLINE_DUR)
+
+
+func _on_door_toggled(_floor: int, _di: int, is_open: bool) -> void:
+	if is_open:
+		_push_ticker("Дверь открыта", Color(0.7, 0.85, 1.0), 1.6)
+	else:
+		_push_ticker("Дверь закрыта", Color(1.0, 0.8, 0.5), 1.6)
 
 
 func _build_grab_slider() -> void:
@@ -329,11 +353,22 @@ func _update_grab_zones(arch: int, backstab: bool) -> void:
 		_grab_zones[i].size.x = (edges[i + 1] - edges[i]) * BAR_W
 
 
+func _tick_ticker(delta: float) -> void:
+	var i := _ticker_msgs.size() - 1
+	while i >= 0:
+		var m: Dictionary = _ticker_msgs[i]
+		m["t"] -= delta
+		var ctrl := m["ctrl"] as Control
+		if m["t"] <= 0.0:
+			ctrl.queue_free()
+			_ticker_msgs.remove_at(i)
+		else:
+			ctrl.modulate.a = clampf(m["t"] / 0.6, 0.0, 1.0)   # плавное угасание
+		i -= 1
+
+
 func _process(delta: float) -> void:
-	if _headline_timer > 0.0:
-		_headline_timer -= delta
-		if _headline_timer <= 0.0:
-			_headline_panel.visible = false
+	_tick_ticker(delta)
 
 	# Шкала захвата
 	var show_slider: bool = sim.finished == 0 and not _paused and sim.p_grab >= 0

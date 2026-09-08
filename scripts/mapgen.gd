@@ -105,18 +105,25 @@ func _build_mall_rooms() -> void:
 		{"id": 3, "rect": Rect2(-he, -he, he - ab, he - ab), "door_x": -ab},
 		{"id": 4, "rect": Rect2( ab, -he, he - ab, he - ab), "door_x":  ab},
 	]
+	var wt := Tuning.MALL_ROOM_WALL_T
+	var dh := Tuning.MALL_DOOR_W * 0.5
 	for d: Dictionary in defs:
 		var r: Rect2 = d["rect"]
 		mall_rooms.append({"id": d["id"], "rect": r})
-		var door := Vector2(d["door_x"], r.position.y + r.size.y * 0.5)
-		mall_doors.append({"pos": door, "a": 0, "b": d["id"]})
+		var door_z := r.position.y + r.size.y * 0.5
+		var door := Vector2(d["door_x"], door_z)
+		# «Заглушка» — прямоугольник, перекрывающий проём, когда дверь закрыта.
+		var plug := Rect2(d["door_x"] - wt * 0.5, door_z - dh, wt, dh * 2.0)
+		mall_doors.append({"pos": door, "a": 0, "b": d["id"], "di": mall_doors.size(), "plug": plug})
 
-	# Граф смежности из дверей (неориентированный).
+	# Граф смежности из дверей (неориентированный), с индексом двери di.
 	for node in [0, 1, 2, 3, 4]:
 		_mall_adj[node] = []
 	for door: Dictionary in mall_doors:
-		_mall_adj[door["a"]].append({"other": door["b"], "pos": door["pos"]})
-		_mall_adj[door["b"]].append({"other": door["a"], "pos": door["pos"]})
+		_mall_adj[door["a"]].append({"other": door["b"], "pos": door["pos"], "di": door["di"]})
+		_mall_adj[door["b"]].append({"other": door["a"], "pos": door["pos"], "di": door["di"]})
+
+	reset_doors()
 
 
 ## Стены комнат: два внутренних ребра (к атриуму) у каждой, дверной вырез на
@@ -178,6 +185,50 @@ func _wall_seg(vertical: bool, fixed: float, lo: float, hi: float, t: float,
 	return out
 
 
+## Состояние дверей: 1=открыта, 0=закрыта. Индекс этажа = floor-1.
+var mall_door_open: Array = []   # Array[PackedByteArray]
+
+func reset_doors() -> void:
+	mall_door_open.clear()
+	for _fl in Tuning.MALL_FLOORS:
+		var row := PackedByteArray()
+		row.resize(mall_doors.size())
+		row.fill(1)
+		mall_door_open.append(row)
+
+
+func is_door_open(floor: int, di: int) -> bool:
+	var fi := floor - 1
+	if fi < 0 or fi >= mall_door_open.size():
+		return true
+	var row: PackedByteArray = mall_door_open[fi]
+	return di < 0 or di >= row.size() or row[di] == 1
+
+
+func set_door(floor: int, di: int, open_state: bool) -> void:
+	var fi := floor - 1
+	if fi < 0 or fi >= mall_door_open.size():
+		return
+	var row: PackedByteArray = mall_door_open[fi]
+	if di >= 0 and di < row.size():
+		row[di] = 1 if open_state else 0
+		mall_door_open[fi] = row
+
+
+## Ближайшая к точке дверь на этаже в радиусе; -1 если нет.
+func nearest_door(p: Vector2, floor: int, radius: float) -> int:
+	if floor < 1 or floor > Tuning.MALL_FLOORS:
+		return -1
+	var best := -1
+	var best_d := radius * radius
+	for door: Dictionary in mall_doors:
+		var d2: float = p.distance_squared_to(door["pos"])
+		if d2 < best_d:
+			best_d = d2
+			best = door["di"]
+	return best
+
+
 ## Индекс комнаты, содержащей точку (0 = атриум).
 func mall_room_at(p: Vector2) -> int:
 	for room: Dictionary in mall_rooms:
@@ -187,15 +238,15 @@ func mall_room_at(p: Vector2) -> int:
 
 
 ## Путь по этажу ТЦ: список вейпоинтов (двери + финальная точка to).
-## Пусто, если from и to в одной комнате (идти напрямую).
-func mall_path(from: Vector2, to: Vector2) -> PackedVector2Array:
+## Учитывает закрытые двери (ребро недоступно). Пусто→[to], если одна комната.
+func mall_path(from: Vector2, to: Vector2, floor: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var ra := mall_room_at(from)
 	var rb := mall_room_at(to)
 	if ra == rb:
 		out.append(to)
 		return out
-	# BFS по маленькому графу узлов.
+	# BFS по маленькому графу узлов, пропуская закрытые двери.
 	var prev := {ra: -1}
 	var queue := [ra]
 	var head := 0
@@ -205,12 +256,14 @@ func mall_path(from: Vector2, to: Vector2) -> PackedVector2Array:
 		if cur == rb:
 			break
 		for e: Dictionary in _mall_adj.get(cur, []):
+			if not is_door_open(floor, e["di"]):
+				continue
 			var nxt: int = e["other"]
 			if not prev.has(nxt):
 				prev[nxt] = cur
 				queue.append(nxt)
 	if not prev.has(rb):
-		out.append(to)   # недостижимо — идём напрямую (fallback)
+		out.append(to)   # недостижимо (двери закрыты) — идём напрямую (fallback)
 		return out
 	# Восстанавливаем цепочку узлов rb..ra.
 	var chain: Array[int] = []
@@ -429,6 +482,11 @@ func is_blocked(p: Vector2, radius: float, floor: int) -> bool:
 			for b: Rect2 in mall_obstacles[fi]:
 				if b.grow(radius).has_point(p):
 					return true
+		# Закрытые двери перекрывают проём.
+		for door: Dictionary in mall_doors:
+			if not is_door_open(floor, door["di"]):
+				if (door["plug"] as Rect2).grow(radius).has_point(p):
+					return true
 		return false
 	else:
 		if not interior_by_floor.has(floor):
@@ -449,6 +507,11 @@ func push_out(p: Vector2, radius: float, floor: int) -> Vector2:
 			for b: Rect2 in mall_obstacles[fi]:
 				if b.grow(radius).has_point(p):
 					p = _push_rect(p, b, radius)
+		for door: Dictionary in mall_doors:
+			if not is_door_open(floor, door["di"]):
+				var plug: Rect2 = door["plug"]
+				if plug.grow(radius).has_point(p):
+					p = _push_rect(p, plug, radius)
 		var mi := mall_interior
 		p.x = clampf(p.x, mi.position.x + radius, mi.end.x - radius)
 		p.y = clampf(p.y, mi.position.y + radius, mi.end.y - radius)

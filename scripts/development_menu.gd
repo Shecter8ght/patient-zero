@@ -108,36 +108,9 @@ func refresh() -> void:
 		_add_label(list, "Галочка означает «проверено и принято». Статус «Реализовано» сам по себе не является приёмкой. Отметки сохраняются отдельно от забега.", 16)
 		if section == "roadmap":
 			_add_label(list, "Нажмите на категорию, чтобы раскрыть пункты. «Идеи» — кандидаты для обсуждения, а не обещанные функции.", 15)
-			_build_category_grid(list, plan.get(section, []), local)
-			continue
-		var last_phase := ""
-		for entry: Dictionary in plan.get(section, []):
-			var phase := str(entry.get("phase", ""))
-			if phase != last_phase:
-				_add_label(list, phase, 22)
-				last_phase = phase
-			var id := str(entry["id"])
-			var line := HBoxContainer.new()
-			line.add_theme_constant_override("separation", 10)
-			list.add_child(line)
-			var check := CheckBox.new()
-			check.custom_minimum_size = Vector2(32, 32)
-			check.add_theme_icon_override("unchecked", _checkbox_icon(false))
-			check.add_theme_icon_override("checked", _checkbox_icon(true))
-			check.tooltip_text = "Проверено и принято"
-			check.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-			check.button_pressed = bool(_pending.get(id, local.get(id, entry.get("accepted", false))))
-			line.add_child(check)
-			_checks[id] = check
-			var body := VBoxContainer.new()
-			body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			line.add_child(body)
-			_add_label(body, str(entry["title"]), 19)
-			var status := _add_label(body, str(entry.get("status", "Запланировано")), 14)
-			status.modulate = Color(0.60, 0.78, 0.85)
-			_add_label(body, str(entry["description"]), 16)
-			_add_label(body, "Приёмка: " + str(entry["acceptance"]), 15)
-			check.toggled.connect(_mark_acceptance.bind(id))
+		else:
+			_add_label(list, "Нажмите на категорию, чтобы раскрыть пункты. Статус пункта показан отдельно от галочки приёмки.", 15)
+		_build_category_grid(list, plan.get(section, []), local)
 	_tabs.current_tab = clampi(selected, 0, _tabs.get_tab_count() - 1)
 	if plan.is_empty():
 		_notice.text = "Не удалось загрузить план разработки."
@@ -218,12 +191,25 @@ func _build_category_grid(parent: Control, entries: Array, local: Dictionary) ->
 			line.add_child(check)
 			_checks[id] = check
 			_add_label(line, str(entry["title"]), 15)
-			var status := _add_label(task, str(entry.get("status", "Запланировано")), 13)
-			status.modulate = Color("b4d8e8")
+			var status_text := str(entry.get("status", "Запланировано"))
+			var status := _add_label(task, "● " + status_text, 13)
+			status.modulate = _status_color(status_text)
 			_add_label(task, str(entry["description"]), 14)
 			var acceptance := _add_label(task, "Приёмка: " + str(entry["acceptance"]), 13)
 			acceptance.modulate = Color("bac7ce")
 			check.toggled.connect(_mark_acceptance.bind(id))
+
+
+## Цвет статуса: запланировано → реализовано → принято (визуальная ротация).
+func _status_color(status: String) -> Color:
+	var s := status.to_lower()
+	if s.contains("принят"):
+		return Color("6bd88a")   # зелёный — принято пользователем
+	elif s.contains("реализ") or s.contains("выполн") or s.contains("готов"):
+		return Color("e8d06b")   # жёлтый — реализовано, ждёт приёмки
+	elif s.contains("иде"):
+		return Color("b48ce8")   # фиолетовый — идея
+	return Color("8fb4c8")       # синий — запланировано
 
 
 func _set_category_expanded(expanded: bool, phase: String, body: Control, hint: Label, count: int) -> void:
