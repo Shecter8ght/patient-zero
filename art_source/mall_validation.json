@@ -1,0 +1,13 @@
+{
+  "agents": 500,
+  "failures": [],
+  "floors": 4,
+  "mall_size": 48,
+  "passed": true,
+  "reachable_cells_per_floor": [
+    7145,
+    7145,
+    7145,
+    7145
+  ]
+}

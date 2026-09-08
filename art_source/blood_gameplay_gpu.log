@@ -1,0 +1,4 @@
+Godot Engine v4.7.2.stable.steam.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.341 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce RTX 5070 Ti
+
+BLOOD_GAMEPLAY_SMOKE {"active_blood_pools":10,"active_drops":333,"agents":500,"batches":9,"frames":240,"mean_frame_ms":3.43287916666667,"p95_frame_ms":7.74,"vsync":false}

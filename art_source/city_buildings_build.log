@@ -1,0 +1,117 @@
+Blender 4.5.12 LTS (hash 84afd5f785f7 built 2026-07-21 01:33:53)
+Warning: Path 'D:\BlenderPortable\blender-4.5.12-windows-x64\4.5\datafiles\assets\brushes\essentials_brushes-gp_draw.blend' cannot be made relative for Material 'Dots Stroke'
+Warning: Path 'D:\BlenderPortable\blender-4.5.12-windows-x64\4.5\datafiles\assets\brushes\essentials_brushes-gp_draw.blend' cannot be made relative for Material 'Material'
+Info: Saved as "building_apartment_a.blend"
+INFO Draco mesh compression is available, use library at D:\BlenderPortable\blender-4.5.12-windows-x64\4.5\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+22:38:52 | INFO: Starting glTF 2.0 export
+22:38:52 | INFO: Extracting primitive: Cube.001
+22:38:52 | INFO: Primitives created: 1
+22:38:52 | INFO: Extracting primitive: Cube.176
+22:38:52 | INFO: Primitives created: 1
+22:38:52 | INFO: Extracting primitive: Cube.186
+22:38:52 | INFO: Primitives created: 1
+22:38:52 | INFO: Finished glTF 2.0 export in 0.00850820541381836 s
+
+Info: Saved as "building_utility_a.blend"
+22:38:52 | INFO: Starting glTF 2.0 export
+22:38:52 | INFO: Extracting primitive: Cube.187
+22:38:52 | INFO: Primitives created: 1
+22:38:52 | INFO: Extracting primitive: Cube.277
+22:38:52 | INFO: Primitives created: 1
+22:38:52 | INFO: Extracting primitive: Cube.287
+22:38:52 | INFO: Primitives created: 1
+22:38:52 | INFO: Finished glTF 2.0 export in 0.007512331008911133 s
+
+Info: Saved as "building_office_a.blend"
+22:38:53 | INFO: Starting glTF 2.0 export
+22:38:53 | INFO: Extracting primitive: Cube.288
+22:38:53 | INFO: Primitives created: 1
+22:38:53 | INFO: Extracting primitive: Cube.469
+22:38:53 | INFO: Primitives created: 1
+22:38:53 | INFO: Extracting primitive: Cube.479
+22:38:53 | INFO: Primitives created: 1
+22:38:53 | INFO: Finished glTF 2.0 export in 0.008508443832397461 s
+
+Info: Saved as "building_utility_5.blend"
+22:38:53 | INFO: Starting glTF 2.0 export
+22:38:53 | INFO: Extracting primitive: Cube.480
+22:38:53 | INFO: Primitives created: 1
+22:38:53 | INFO: Extracting primitive: Cube.570
+22:38:53 | INFO: Primitives created: 1
+22:38:53 | INFO: Extracting primitive: Cube.580
+22:38:53 | INFO: Primitives created: 1
+22:38:53 | INFO: Finished glTF 2.0 export in 0.006002187728881836 s
+
+Info: Saved as "building_office_7.blend"
+22:38:54 | INFO: Starting glTF 2.0 export
+22:38:54 | INFO: Extracting primitive: Cube.581
+22:38:54 | INFO: Primitives created: 1
+22:38:54 | INFO: Extracting primitive: Cube.776
+22:38:54 | INFO: Primitives created: 1
+22:38:54 | INFO: Extracting primitive: Cube.786
+22:38:54 | INFO: Primitives created: 1
+22:38:54 | INFO: Finished glTF 2.0 export in 0.0075070858001708984 s
+
+Info: Saved as "building_apartment_9.blend"
+22:38:55 | INFO: Starting glTF 2.0 export
+22:38:55 | INFO: Extracting primitive: Cube.787
+22:38:55 | INFO: Primitives created: 1
+22:38:55 | INFO: Extracting primitive: Cube.1050
+22:38:55 | INFO: Primitives created: 1
+22:38:55 | INFO: Extracting primitive: Cube.1060
+22:38:55 | INFO: Primitives created: 1
+22:38:55 | INFO: Finished glTF 2.0 export in 0.008563995361328125 s
+
+Info: Saved as "building_apartment_10.blend"
+22:38:56 | INFO: Starting glTF 2.0 export
+22:38:56 | INFO: Extracting primitive: Cube.1061
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Extracting primitive: Cube.1180
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Extracting primitive: Cube.1190
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Finished glTF 2.0 export in 0.006512165069580078 s
+
+Info: Saved as "building_utility_11.blend"
+22:38:56 | INFO: Starting glTF 2.0 export
+22:38:56 | INFO: Extracting primitive: Cube.1191
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Extracting primitive: Cube.1295
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Extracting primitive: Cube.1305
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Finished glTF 2.0 export in 0.00751042366027832 s
+
+Info: Saved as "building_utility_12.blend"
+22:38:56 | INFO: Starting glTF 2.0 export
+22:38:56 | INFO: Extracting primitive: Cube.1306
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Extracting primitive: Cube.1396
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Extracting primitive: Cube.1406
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Finished glTF 2.0 export in 0.0075147151947021484 s
+
+Info: Saved as "building_apartment_13.blend"
+22:38:56 | INFO: Starting glTF 2.0 export
+22:38:56 | INFO: Extracting primitive: Cube.1407
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Extracting primitive: Cube.1523
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Extracting primitive: Cube.1533
+22:38:56 | INFO: Primitives created: 1
+22:38:56 | INFO: Finished glTF 2.0 export in 0.00727081298828125 s
+
+Info: Saved as "building_utility_15.blend"
+22:38:57 | INFO: Starting glTF 2.0 export
+22:38:57 | INFO: Extracting primitive: Cube.1534
+22:38:57 | INFO: Primitives created: 1
+22:38:57 | INFO: Extracting primitive: Cube.1622
+22:38:57 | INFO: Primitives created: 1
+22:38:57 | INFO: Extracting primitive: Cube.1632
+22:38:57 | INFO: Primitives created: 1
+22:38:57 | INFO: Finished glTF 2.0 export in 0.006000041961669922 s
+
+CITY_BUILDINGS_COMPLETE 11
+
+Blender quit

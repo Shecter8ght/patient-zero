@@ -1,0 +1,162 @@
+[
+  {
+    "id": "civilian_normal_a",
+    "category": "characters",
+    "glb": "assets/models/characters/civilian_normal_a.glb",
+    "blend": "art_source/blender/characters/civilian_normal_a.blend",
+    "triangles": 700,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.7499,
+      1.7,
+      0.3386
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "civilian_child_a",
+    "category": "characters",
+    "glb": "assets/models/characters/civilian_child_a.glb",
+    "blend": "art_source/blender/characters/civilian_child_a.blend",
+    "triangles": 672,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.4883,
+      1.2,
+      0.3247
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "civilian_elder_a",
+    "category": "characters",
+    "glb": "assets/models/characters/civilian_elder_a.glb",
+    "blend": "art_source/blender/characters/civilian_elder_a.blend",
+    "triangles": 712,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.6784,
+      1.6,
+      0.3377
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "civilian_brute_a",
+    "category": "characters",
+    "glb": "assets/models/characters/civilian_brute_a.glb",
+    "blend": "art_source/blender/characters/civilian_brute_a.blend",
+    "triangles": 700,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.9108,
+      1.85,
+      0.3685
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "civilian_journalist_a",
+    "category": "characters",
+    "glb": "assets/models/characters/civilian_journalist_a.glb",
+    "blend": "art_source/blender/characters/civilian_journalist_a.blend",
+    "triangles": 852,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.7499,
+      1.7,
+      0.505
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "police_officer_a",
+    "category": "characters",
+    "glb": "assets/models/characters/police_officer_a.glb",
+    "blend": "art_source/blender/characters/police_officer_a.blend",
+    "triangles": 952,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.7674,
+      1.75,
+      0.3741
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "swat_officer_a",
+    "category": "characters",
+    "glb": "assets/models/characters/swat_officer_a.glb",
+    "blend": "art_source/blender/characters/swat_officer_a.blend",
+    "triangles": 1140,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.8505,
+      1.8,
+      0.4226
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "patient_zero",
+    "category": "characters",
+    "glb": "assets/models/characters/patient_zero.glb",
+    "blend": "art_source/blender/characters/patient_zero.blend",
+    "triangles": 780,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.794,
+      1.8,
+      0.396
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_house_a",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_house_a.glb",
+    "blend": "art_source/blender/buildings/building_house_a.blend",
+    "triangles": 368,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      9.056,
+      4.38,
+      7.66
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "evac_bus",
+    "category": "vehicles",
+    "glb": "assets/models/vehicles/evac_bus.glb",
+    "blend": "art_source/blender/vehicles/evac_bus.blend",
+    "triangles": 1188,
+    "mesh_count": 2,
+    "dimensions_godot_xyz": [
+      2.428,
+      3.0,
+      8.0085
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  }
+]

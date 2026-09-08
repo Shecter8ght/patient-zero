@@ -1,0 +1,86 @@
+Blender 4.5.12 LTS (hash 84afd5f785f7 built 2026-07-21 01:33:53)
+Warning: Path 'D:\BlenderPortable\blender-4.5.12-windows-x64\4.5\datafiles\assets\brushes\essentials_brushes-gp_draw.blend' cannot be made relative for Material 'Dots Stroke'
+Warning: Path 'D:\BlenderPortable\blender-4.5.12-windows-x64\4.5\datafiles\assets\brushes\essentials_brushes-gp_draw.blend' cannot be made relative for Material 'Material'
+Info: Saved as "mall_shell.blend"
+INFO Draco mesh compression is available, use library at D:\BlenderPortable\blender-4.5.12-windows-x64\4.5\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+22:41:23 | INFO: Starting glTF 2.0 export
+22:41:23 | INFO: Extracting primitive: Cube.001
+22:41:23 | INFO: Primitives created: 1
+22:41:23 | INFO: Extracting primitive: Cube.351
+22:41:23 | INFO: Primitives created: 1
+22:41:23 | INFO: Finished glTF 2.0 export in 0.009505748748779297 s
+
+Info: Saved as "mall_floor.blend"
+22:41:23 | INFO: Starting glTF 2.0 export
+22:41:23 | INFO: Extracting primitive: Cube.374
+22:41:23 | INFO: Primitives created: 1
+22:41:23 | INFO: Extracting primitive: Cube.423
+22:41:23 | INFO: Primitives created: 1
+22:41:23 | INFO: Finished glTF 2.0 export in 0.00400853157043457 s
+
+Info: Saved as "mall_kiosk_food.blend"
+22:41:23 | INFO: Starting glTF 2.0 export
+22:41:23 | INFO: Extracting primitive: Cube.429
+22:41:23 | INFO: Primitives created: 1
+22:41:23 | INFO: Finished glTF 2.0 export in 0.0035581588745117188 s
+
+Info: Saved as "mall_kiosk_clothes.blend"
+22:41:23 | INFO: Starting glTF 2.0 export
+22:41:23 | INFO: Extracting primitive: Cube.483
+22:41:23 | INFO: Primitives created: 1
+22:41:23 | INFO: Finished glTF 2.0 export in 0.003000020980834961 s
+
+Info: Saved as "mall_kiosk_electronics.blend"
+22:41:23 | INFO: Starting glTF 2.0 export
+22:41:23 | INFO: Extracting primitive: Cube.515
+22:41:23 | INFO: Primitives created: 1
+22:41:23 | INFO: Finished glTF 2.0 export in 0.0035071372985839844 s
+
+Warning: No mesh data to join
+Info: Saved as "mall_shop_food.blend"
+22:41:24 | INFO: Starting glTF 2.0 export
+22:41:24 | INFO: Extracting primitive: Cube.552
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Extracting primitive: Cube.553
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Extracting primitive: Cube.631
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Finished glTF 2.0 export in 0.0065042972564697266 s
+
+Warning: No mesh data to join
+Info: Saved as "mall_shop_clothes.blend"
+22:41:24 | INFO: Starting glTF 2.0 export
+22:41:24 | INFO: Extracting primitive: Cube.634
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Extracting primitive: Cube.635
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Extracting primitive: Cube.713
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Finished glTF 2.0 export in 0.005507469177246094 s
+
+Warning: No mesh data to join
+Info: Saved as "mall_shop_electronics.blend"
+22:41:24 | INFO: Starting glTF 2.0 export
+22:41:24 | INFO: Extracting primitive: Cube.716
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Extracting primitive: Cube.717
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Extracting primitive: Cube.837
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Finished glTF 2.0 export in 0.006788492202758789 s
+
+Info: Saved as "mall_escalator_up.blend"
+22:41:24 | INFO: Starting glTF 2.0 export
+22:41:24 | INFO: Extracting primitive: Cube.840
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Finished glTF 2.0 export in 0.004509449005126953 s
+
+Info: Saved as "mall_escalator_down.blend"
+22:41:24 | INFO: Starting glTF 2.0 export
+22:41:24 | INFO: Extracting primitive: Cube.862
+22:41:24 | INFO: Primitives created: 1
+22:41:24 | INFO: Finished glTF 2.0 export in 0.004205942153930664 s
+
+MALL_ASSETS_COMPLETE 48.0 10
+
+Blender quit

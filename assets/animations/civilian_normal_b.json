@@ -1,0 +1,152 @@
+{
+  "width": 64,
+  "height": 543,
+  "bones": [
+    "root",
+    "pelvis",
+    "spine",
+    "head",
+    "jaw",
+    "upper_arm_L",
+    "forearm_L",
+    "hand_L",
+    "thigh_L",
+    "calf_L",
+    "foot_L",
+    "upper_arm_R",
+    "forearm_R",
+    "hand_R",
+    "thigh_R",
+    "calf_R",
+    "foot_R",
+    "prop_phone",
+    "prop_camera",
+    "prop_pistol"
+  ],
+  "fps": 24,
+  "clips": {
+    "idle": {
+      "start": 0,
+      "frames": 49,
+      "duration": 2.0,
+      "loop": true
+    },
+    "walk": {
+      "start": 49,
+      "frames": 25,
+      "duration": 1.0,
+      "loop": true
+    },
+    "run": {
+      "start": 74,
+      "frames": 17,
+      "duration": 0.6666666666666666,
+      "loop": true
+    },
+    "grab": {
+      "start": 91,
+      "frames": 25,
+      "duration": 1.0,
+      "loop": true
+    },
+    "resist": {
+      "start": 116,
+      "frames": 25,
+      "duration": 1.0,
+      "loop": true
+    },
+    "turning": {
+      "start": 141,
+      "frames": 25,
+      "duration": 1.0,
+      "loop": false
+    },
+    "fall": {
+      "start": 166,
+      "frames": 25,
+      "duration": 1.0,
+      "loop": false
+    },
+    "arrested": {
+      "start": 191,
+      "frames": 25,
+      "duration": 1.0,
+      "loop": true
+    },
+    "break_free": {
+      "start": 216,
+      "frames": 17,
+      "duration": 0.6666666666666666,
+      "loop": false
+    },
+    "lunge": {
+      "start": 233,
+      "frames": 13,
+      "duration": 0.5,
+      "loop": false
+    },
+    "phone": {
+      "start": 246,
+      "frames": 25,
+      "duration": 1.0,
+      "loop": true
+    },
+    "photo": {
+      "start": 271,
+      "frames": 25,
+      "duration": 1.0,
+      "loop": true
+    },
+    "shoot": {
+      "start": 296,
+      "frames": 13,
+      "duration": 0.5,
+      "loop": false
+    },
+    "zombie_idle": {
+      "start": 309,
+      "frames": 49,
+      "duration": 2.0,
+      "loop": true
+    },
+    "zombie_walk": {
+      "start": 358,
+      "frames": 37,
+      "duration": 1.5,
+      "loop": true
+    },
+    "zombie_run": {
+      "start": 395,
+      "frames": 21,
+      "duration": 0.8333333333333334,
+      "loop": true
+    },
+    "bite": {
+      "start": 416,
+      "frames": 25,
+      "duration": 1.0,
+      "loop": true
+    },
+    "bitten_idle": {
+      "start": 441,
+      "frames": 49,
+      "duration": 2.0,
+      "loop": true
+    },
+    "bitten_walk": {
+      "start": 490,
+      "frames": 31,
+      "duration": 1.25,
+      "loop": true
+    },
+    "bitten_run": {
+      "start": 521,
+      "frames": 22,
+      "duration": 0.875,
+      "loop": true
+    }
+  },
+  "format": "RGBAF row-major: 3 texels per bone; Godot rest-to-pose transform",
+  "binding": "UV2.x = (bone_index + 0.5) / bone_count",
+  "rigid_weights": true
+}

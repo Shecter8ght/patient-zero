@@ -1,0 +1,10 @@
+{
+	"agents": 500,
+	"batches": 7,
+	"gpu": "NVIDIA GeForce RTX 5070 Ti",
+	"mean_frame_ms": 2.88235555555556,
+	"note": "Short local smoke run, includes simulation and rendering; not a sustained benchmark or minimum-spec guarantee.",
+	"p95_frame_ms": 7.261,
+	"renderer": "forward_plus",
+	"sample_frames": 180
+}

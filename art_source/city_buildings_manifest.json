@@ -1,0 +1,178 @@
+[
+  {
+    "id": "building_apartment_a",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_apartment_a.glb",
+    "blend": "art_source/blender/buildings/building_apartment_a.blend",
+    "triangles": 2232,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      12.0,
+      15.525,
+      11.0
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_utility_a",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_utility_a.glb",
+    "blend": "art_source/blender/buildings/building_utility_a.blend",
+    "triangles": 1212,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      15.0,
+      8.525,
+      13.0
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_office_a",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_office_a.glb",
+    "blend": "art_source/blender/buildings/building_office_a.blend",
+    "triangles": 2304,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      12.0,
+      19.025,
+      12.0
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_utility_5",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_utility_5.glb",
+    "blend": "art_source/blender/buildings/building_utility_5.blend",
+    "triangles": 1212,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      15.6361,
+      8.525,
+      12.1927
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_office_7",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_office_7.glb",
+    "blend": "art_source/blender/buildings/building_office_7.blend",
+    "triangles": 2472,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      10.0555,
+      22.525,
+      12.9692
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_apartment_9",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_apartment_9.glb",
+    "blend": "art_source/blender/buildings/building_apartment_9.blend",
+    "triangles": 3288,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      11.127,
+      22.525,
+      11.1122
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_apartment_10",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_apartment_10.glb",
+    "blend": "art_source/blender/buildings/building_apartment_10.blend",
+    "triangles": 1560,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      11.9204,
+      12.025,
+      9.8728
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_utility_11",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_utility_11.glb",
+    "blend": "art_source/blender/buildings/building_utility_11.blend",
+    "triangles": 1380,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      16.0759,
+      8.525,
+      14.3996
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_utility_12",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_utility_12.glb",
+    "blend": "art_source/blender/buildings/building_utility_12.blend",
+    "triangles": 1212,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      15.9256,
+      8.525,
+      11.2994
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_apartment_13",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_apartment_13.glb",
+    "blend": "art_source/blender/buildings/building_apartment_13.blend",
+    "triangles": 1524,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      10.8121,
+      12.025,
+      11.264
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "building_utility_15",
+    "category": "buildings",
+    "glb": "assets/models/buildings/building_utility_15.glb",
+    "blend": "art_source/blender/buildings/building_utility_15.blend",
+    "triangles": 1188,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      13.0766,
+      8.525,
+      14.322
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "agents": 500,
+  "failures": [],
+  "outdoor_reachable_cells": 60194,
+  "passed": true,
+  "props": {
+    "bench": 4,
+    "bin": 4,
+    "hatchback": 3,
+    "lamp": 20,
+    "planter": 2,
+    "sedan": 3
+  },
+  "spawn_points": 3514,
+  "surface_patches": 379
+}

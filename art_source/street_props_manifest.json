@@ -1,0 +1,130 @@
+[
+  {
+    "id": "street_bench",
+    "category": "street",
+    "glb": "assets/models/street/street_bench.glb",
+    "blend": "art_source/blender/street/street_bench.blend",
+    "triangles": 108,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      2.2,
+      1.06,
+      0.625
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "street_bin",
+    "category": "street",
+    "glb": "assets/models/street/street_bin.glb",
+    "blend": "art_source/blender/street/street_bin.blend",
+    "triangles": 80,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.58,
+      0.98,
+      0.58
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "street_lamp",
+    "category": "street",
+    "glb": "assets/models/street/street_lamp.glb",
+    "blend": "art_source/blender/street/street_lamp.blend",
+    "triangles": 140,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.4,
+      4.83,
+      1.575
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "street_planter",
+    "category": "street",
+    "glb": "assets/models/street/street_planter.glb",
+    "blend": "art_source/blender/street/street_planter.blend",
+    "triangles": 116,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      1.3,
+      1.37,
+      1.3
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "bus_shelter",
+    "category": "street",
+    "glb": "assets/models/street/bus_shelter.glb",
+    "blend": "art_source/blender/street/bus_shelter.blend",
+    "triangles": 200,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      4.0,
+      2.52,
+      1.4
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "bus_stop_sign",
+    "category": "street",
+    "glb": "assets/models/street/bus_stop_sign.glb",
+    "blend": "art_source/blender/street/bus_stop_sign.blend",
+    "triangles": 108,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.62,
+      2.625,
+      0.095
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "parked_sedan",
+    "category": "street",
+    "glb": "assets/models/street/parked_sedan.glb",
+    "blend": "art_source/blender/street/parked_sedan.blend",
+    "triangles": 656,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      1.9,
+      1.65,
+      4.2
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "parked_hatchback",
+    "category": "street",
+    "glb": "assets/models/street/parked_hatchback.glb",
+    "blend": "art_source/blender/street/parked_hatchback.blend",
+    "triangles": 656,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      1.9,
+      1.65,
+      4.2
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  }
+]

@@ -1,0 +1,162 @@
+[
+  {
+    "id": "mall_shell",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_shell.glb",
+    "blend": "art_source/blender/mall/mall_shell.blend",
+    "triangles": 5348,
+    "mesh_count": 2,
+    "dimensions_godot_xyz": [
+      48.0,
+      15.37,
+      48.013
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "mall_floor",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_floor.glb",
+    "blend": "art_source/blender/mall/mall_floor.blend",
+    "triangles": 660,
+    "mesh_count": 2,
+    "dimensions_godot_xyz": [
+      46.48,
+      1.14,
+      46.48
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "mall_kiosk_food",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_kiosk_food.glb",
+    "blend": "art_source/blender/mall/mall_kiosk_food.blend",
+    "triangles": 648,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      3.5,
+      2.0,
+      2.755
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "mall_kiosk_clothes",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_kiosk_clothes.glb",
+    "blend": "art_source/blender/mall/mall_kiosk_clothes.blend",
+    "triangles": 384,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      3.5,
+      2.0,
+      2.755
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "mall_kiosk_electronics",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_kiosk_electronics.glb",
+    "blend": "art_source/blender/mall/mall_kiosk_electronics.blend",
+    "triangles": 444,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      3.5,
+      2.0,
+      2.755
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "mall_shop_food",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_shop_food.glb",
+    "blend": "art_source/blender/mall/mall_shop_food.blend",
+    "triangles": 984,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      8.0,
+      2.68,
+      6.0
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "mall_shop_clothes",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_shop_clothes.glb",
+    "blend": "art_source/blender/mall/mall_shop_clothes.blend",
+    "triangles": 984,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      8.0,
+      2.68,
+      6.0
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "mall_shop_electronics",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_shop_electronics.glb",
+    "blend": "art_source/blender/mall/mall_shop_electronics.blend",
+    "triangles": 1488,
+    "mesh_count": 3,
+    "dimensions_godot_xyz": [
+      8.0,
+      2.68,
+      6.0
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "mall_escalator_up",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_escalator_up.glb",
+    "blend": "art_source/blender/mall/mall_escalator_up.blend",
+    "triangles": 264,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      2.7,
+      1.4734,
+      4.123
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "mall_escalator_down",
+    "category": "mall",
+    "glb": "assets/models/mall/mall_escalator_down.glb",
+    "blend": "art_source/blender/mall/mall_escalator_down.blend",
+    "triangles": 264,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      2.7,
+      1.4734,
+      4.123
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "agents": 500,
+  "floor": 2,
+  "frames": 240,
+  "mean_frame_ms": 2.2776375,
+  "p95_frame_ms": 6.222,
+  "renderer": "Forward+",
+  "vsync": false
+}

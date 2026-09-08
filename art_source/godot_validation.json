@@ -1,0 +1,97 @@
+{
+	"assets": [
+		{
+			"bounds": "[P: (-0.374941, 0.0, -0.138582), S: (0.749882, 1.7, 0.338582)]",
+			"id": "civilian_normal_a",
+			"imported": true,
+			"meshes": 1,
+			"surfaces": 1,
+			"triangles": 700
+		},
+		{
+			"bounds": "[P: (-0.244133, 0.0, -0.183529), S: (0.488267, 1.2, 0.324706)]",
+			"id": "civilian_child_a",
+			"imported": true,
+			"meshes": 1,
+			"surfaces": 1,
+			"triangles": 672
+		},
+		{
+			"bounds": "[P: (-0.339206, 0.0, -0.121735), S: (0.678412, 1.6, 0.337735)]",
+			"id": "civilian_elder_a",
+			"imported": true,
+			"meshes": 1,
+			"surfaces": 1,
+			"triangles": 712
+		},
+		{
+			"bounds": "[P: (-0.455378, 0.0, -0.15081), S: (0.910757, 1.85, 0.368457)]",
+			"id": "civilian_brute_a",
+			"imported": true,
+			"meshes": 1,
+			"surfaces": 1,
+			"triangles": 700
+		},
+		{
+			"bounds": "[P: (-0.374941, 0.0, -0.185), S: (0.749882, 1.7, 0.505)]",
+			"id": "civilian_journalist_a",
+			"imported": true,
+			"meshes": 1,
+			"surfaces": 1,
+			"triangles": 852
+		},
+		{
+			"bounds": "[P: (-0.383711, 0.0, -0.141824), S: (0.767423, 1.75, 0.374134)]",
+			"id": "police_officer_a",
+			"imported": true,
+			"meshes": 1,
+			"surfaces": 1,
+			"triangles": 952
+		},
+		{
+			"bounds": "[P: (-0.425226, 0.0, -0.189474), S: (0.850451, 1.8, 0.422632)]",
+			"id": "swat_officer_a",
+			"imported": true,
+			"meshes": 1,
+			"surfaces": 1,
+			"triangles": 1140
+		},
+		{
+			"bounds": "[P: (-0.396996, 0.0, -0.184196), S: (0.793993, 1.8, 0.39596)]",
+			"id": "patient_zero",
+			"imported": true,
+			"meshes": 1,
+			"surfaces": 1,
+			"triangles": 780
+		},
+		{
+			"bounds": "[P: (-4.528, -0.2, -3.75), S: (9.056, 4.38, 7.66)]",
+			"id": "building_house_a",
+			"imported": true,
+			"meshes": 3,
+			"surfaces": 3,
+			"triangles": 368
+		},
+		{
+			"bounds": "[P: (-1.212, 0.0, -4.001), S: (2.428, 3.0, 8.0085)]",
+			"id": "evac_bus",
+			"imported": true,
+			"meshes": 2,
+			"surfaces": 2,
+			"triangles": 1188
+		}
+	],
+	"failures": [],
+	"godot_version": {
+		"build": "steam",
+		"hash": "ed1daf0bf001b61586d9930840f2f1394092c079",
+		"hex": 263938,
+		"major": 4,
+		"minor": 7,
+		"patch": 2,
+		"status": "stable",
+		"string": "4.7.2-stable (steam)",
+		"timestamp": 0
+	},
+	"passed": true
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "civilian_normal_b",
+    "category": "characters",
+    "glb": "assets/models/characters/civilian_normal_b.glb",
+    "blend": "art_source/blender/characters/civilian_normal_b.blend",
+    "triangles": 800,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.7486,
+      1.795,
+      0.4101
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "civilian_normal_c",
+    "category": "characters",
+    "glb": "assets/models/characters/civilian_normal_c.glb",
+    "blend": "art_source/blender/characters/civilian_normal_c.blend",
+    "triangles": 788,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.7616,
+      1.65,
+      0.4941
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "prop_phone",
+    "category": "props",
+    "glb": "assets/models/props/prop_phone.glb",
+    "blend": "art_source/blender/props/prop_phone.blend",
+    "triangles": 56,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.075,
+      0.15,
+      0.018
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "prop_camera",
+    "category": "props",
+    "glb": "assets/models/props/prop_camera.glb",
+    "blend": "art_source/blender/props/prop_camera.blend",
+    "triangles": 72,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.18,
+      0.115,
+      0.14
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  },
+  {
+    "id": "prop_pistol",
+    "category": "props",
+    "glb": "assets/models/props/prop_pistol.glb",
+    "blend": "art_source/blender/props/prop_pistol.blend",
+    "triangles": 88,
+    "mesh_count": 1,
+    "dimensions_godot_xyz": [
+      0.052,
+      0.1295,
+      0.2
+    ],
+    "forward": "+Z",
+    "materials": 1,
+    "rigged": false
+  }
+]

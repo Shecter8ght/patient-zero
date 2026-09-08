@@ -1,0 +1,66 @@
+[
+  {
+    "depth": 12.1927471160889,
+    "floor_id": 5,
+    "height": 7.0,
+    "id": "building_utility_5",
+    "kind": "utility",
+    "width": 15.6361293792725
+  },
+  {
+    "depth": 12.969181060791,
+    "floor_id": 7,
+    "height": 21.0,
+    "id": "building_office_7",
+    "kind": "office",
+    "width": 10.0555381774902
+  },
+  {
+    "depth": 11.1121530532837,
+    "floor_id": 9,
+    "height": 21.0,
+    "id": "building_apartment_9",
+    "kind": "apartment",
+    "width": 11.1269683837891
+  },
+  {
+    "depth": 9.87280368804932,
+    "floor_id": 10,
+    "height": 10.5,
+    "id": "building_apartment_10",
+    "kind": "apartment",
+    "width": 11.9203910827637
+  },
+  {
+    "depth": 14.3996334075928,
+    "floor_id": 11,
+    "height": 7.0,
+    "id": "building_utility_11",
+    "kind": "utility",
+    "width": 16.0759391784668
+  },
+  {
+    "depth": 11.299388885498,
+    "floor_id": 12,
+    "height": 7.0,
+    "id": "building_utility_12",
+    "kind": "utility",
+    "width": 15.9256172180176
+  },
+  {
+    "depth": 11.2640247344971,
+    "floor_id": 13,
+    "height": 10.5,
+    "id": "building_apartment_13",
+    "kind": "apartment",
+    "width": 10.8120632171631
+  },
+  {
+    "depth": 14.3219995498657,
+    "floor_id": 15,
+    "height": 7.0,
+    "id": "building_utility_15",
+    "kind": "utility",
+    "width": 13.076584815979
+  }
+]

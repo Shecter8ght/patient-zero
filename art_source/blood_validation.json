@@ -1,0 +1,8 @@
+{
+  "batch_size": 256,
+  "failures": [],
+  "particle_limit": 720,
+  "passed": true,
+  "permanent_marks_tested": 1000,
+  "retention_seconds_tested": 3600
+}

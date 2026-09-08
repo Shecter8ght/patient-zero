@@ -1,0 +1,55 @@
+Blender 4.5.12 LTS (hash 84afd5f785f7 built 2026-07-21 01:33:53)
+Warning: Path 'D:\BlenderPortable\blender-4.5.12-windows-x64\4.5\datafiles\assets\brushes\essentials_brushes-gp_draw.blend' cannot be made relative for Material 'Dots Stroke'
+Warning: Path 'D:\BlenderPortable\blender-4.5.12-windows-x64\4.5\datafiles\assets\brushes\essentials_brushes-gp_draw.blend' cannot be made relative for Material 'Material'
+Info: Saved as "street_bench.blend"
+INFO Draco mesh compression is available, use library at D:\BlenderPortable\blender-4.5.12-windows-x64\4.5\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+22:48:48 | INFO: Starting glTF 2.0 export
+22:48:48 | INFO: Extracting primitive: Cube.001
+22:48:48 | INFO: Primitives created: 1
+22:48:48 | INFO: Finished glTF 2.0 export in 0.004506587982177734 s
+
+Info: Saved as "street_bin.blend"
+22:48:48 | INFO: Starting glTF 2.0 export
+22:48:48 | INFO: Extracting primitive: Cube.010
+22:48:48 | INFO: Primitives created: 1
+22:48:48 | INFO: Finished glTF 2.0 export in 0.0030007362365722656 s
+
+Info: Saved as "street_lamp.blend"
+22:48:48 | INFO: Starting glTF 2.0 export
+22:48:48 | INFO: Extracting primitive: Cube.014
+22:48:48 | INFO: Primitives created: 1
+22:48:48 | INFO: Finished glTF 2.0 export in 0.003772735595703125 s
+
+Info: Saved as "street_planter.blend"
+22:48:48 | INFO: Starting glTF 2.0 export
+22:48:48 | INFO: Extracting primitive: Cube.018
+22:48:48 | INFO: Primitives created: 1
+22:48:48 | INFO: Finished glTF 2.0 export in 0.0031070709228515625 s
+
+Info: Saved as "bus_shelter.blend"
+22:48:48 | INFO: Starting glTF 2.0 export
+22:48:48 | INFO: Extracting primitive: Cube.020
+22:48:48 | INFO: Primitives created: 1
+22:48:48 | INFO: Finished glTF 2.0 export in 0.003004312515258789 s
+
+Info: Saved as "bus_stop_sign.blend"
+22:48:48 | INFO: Starting glTF 2.0 export
+22:48:48 | INFO: Extracting primitive: Cone.001
+22:48:48 | INFO: Primitives created: 1
+22:48:48 | INFO: Finished glTF 2.0 export in 0.002999544143676758 s
+
+Info: Saved as "parked_sedan.blend"
+22:48:48 | INFO: Starting glTF 2.0 export
+22:48:48 | INFO: Extracting primitive: Cube.038
+22:48:48 | INFO: Primitives created: 1
+22:48:48 | INFO: Finished glTF 2.0 export in 0.0040051937103271484 s
+
+Info: Saved as "parked_hatchback.blend"
+22:48:48 | INFO: Starting glTF 2.0 export
+22:48:48 | INFO: Extracting primitive: Cube.058
+22:48:48 | INFO: Primitives created: 1
+22:48:48 | INFO: Finished glTF 2.0 export in 0.004513263702392578 s
+
+STREET_PROPS_COMPLETE 8
+
+Blender quit
