@@ -93,6 +93,8 @@ var spread_count:   PackedInt32Array      # сколько других зара
 var dest:           PackedVector2Array    # текущая точка назначения горожанина
 var nav_stuck:      PackedFloat32Array    # сек без прогресса к цели
 var nav_best:       PackedFloat32Array    # лучшая (наименьшая) достигнутая дистанция до цели
+var nav_path:       Array = []            # Array[PackedVector2Array] вейпоинты (двери+финал) для этажей ТЦ
+var nav_pidx:       PackedInt32Array      # индекс текущего вейпоинта
 var _id_rng        := RandomNumberGenerator.new()
 var _last_infector := -3                  # выставлять перед каждым _infect()
 
@@ -129,6 +131,8 @@ func reset_run() -> void:
 	dest.resize(n)
 	nav_stuck.resize(n);   nav_stuck.fill(0.0)
 	nav_best.resize(n);    nav_best.fill(INF)
+	nav_path.clear();      nav_path.resize(n)
+	nav_pidx.resize(n);    nav_pidx.fill(-1)
 	identities.clear();    identities.resize(n)
 	survivor_role.resize(n);   survivor_role.fill(0)
 	_id_rng.randomize()
@@ -686,6 +690,9 @@ func _update_agents(delta: float) -> void:
 				floor_idx[i] = tr["to_floor"]
 				pos[i]       = tr["dest"]
 				floor_cd[i]  = Tuning.FLOOR_CD
+				dest[i]      = Vector2.ZERO   # цель/путь пересчитать на новом этаже
+				nav_path[i]  = null
+				nav_pidx[i]  = -1
 
 	# MUT_CROWD_SPREAD — заражённые медленно заражают соседей
 	# BLACK_DEATH расширяет это на носителей в инкубации (вдвое медленнее)
@@ -1124,8 +1131,10 @@ func _tick_civilian(i: int, delta: float) -> void:
 
 
 func _pick_dest(i: int) -> void:
-	nav_stuck[i] = 0.0
-	nav_best[i]  = INF
+	nav_stuck[i]  = 0.0
+	nav_best[i]   = INF
+	nav_pidx[i]   = -1
+	nav_path[i]   = null
 	var fl := floor_idx[i]
 	if fl == 0:
 		var pts := MapGen.spawn_points
@@ -1137,8 +1146,12 @@ func _pick_dest(i: int) -> void:
 			var pts: Array = MapGen.mall_spawns[mi]
 			if pts.size() > 0:
 				dest[i] = pts[randi() % pts.size()]
-				return
-		dest[i] = MapGen.mall_interior.get_center()
+		if dest[i] == Vector2.ZERO:
+			dest[i] = MapGen.mall_interior.get_center()
+		# Путь по комнатам ТЦ через двери.
+		nav_path[i] = MapGen.mall_path(pos[i], dest[i])
+		nav_pidx[i] = 0
+		return
 	else:
 		if MapGen.interior_by_floor.has(fl):
 			var r: Rect2 = MapGen.interior_by_floor[fl]
@@ -1164,23 +1177,41 @@ func _walk_to_dest(i: int, delta: float) -> void:
 	if dest[i] == Vector2.ZERO:
 		_pick_dest(i)
 		return
-	var to_dest := dest[i] - pos[i]
-	var dist := to_dest.length()
-	if dist < 1.5:   # прибыл
+
+	# Прибытие к финальной цели.
+	if pos[i].distance_to(dest[i]) < 1.5:
 		_pick_dest(i)
 		return
 
-	# Прогресс к цели: приблизился — сбрасываем таймер застревания.
+	# Текущий вейпоинт: дверь по маршруту ТЦ или сама цель.
+	var target := dest[i]
+	var path: Variant = nav_path[i]
+	if path != null and nav_pidx[i] >= 0 and nav_pidx[i] < (path as PackedVector2Array).size():
+		var p := path as PackedVector2Array
+		target = p[nav_pidx[i]]
+		# Достигли двери — переходим к следующему вейпоинту.
+		if nav_pidx[i] < p.size() - 1 and pos[i].distance_to(target) < 1.3:
+			nav_pidx[i] += 1
+			target = p[nav_pidx[i]]
+			nav_best[i]  = INF
+			nav_stuck[i] = 0.0
+
+	var to_t := target - pos[i]
+	var dist := to_t.length()
+	if dist < 0.05:
+		return
+
+	# Прогресс к текущему вейпоинту: приблизился — сбрасываем таймер застревания.
 	if dist < nav_best[i] - Tuning.NAV_PROGRESS_EPS:
 		nav_best[i]  = dist
 		nav_stuck[i] = 0.0
 	else:
 		nav_stuck[i] += delta
 		if nav_stuck[i] >= Tuning.NAV_REPICK_TIME:
-			_pick_dest(i)   # долго топчемся — другая цель разблокирует
+			_pick_dest(i)   # долго топчемся — другой маршрут разблокирует
 			return
 
-	var want_dir := to_dest / dist
+	var want_dir := to_t / dist
 	var steer := _steer_clear(i, want_dir)
 	if steer == Vector2.ZERO:
 		# Со всех сторон стена — считаем это застреванием, но не стоим на месте.

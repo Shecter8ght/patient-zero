@@ -283,6 +283,8 @@ func _render_mall_floors() -> void:
 		fn.position.y = MapGen.floor_y3d(fl + 1)
 		var floor_model := MALL_FLOOR.instantiate() as Node3D
 		fn.add_child(floor_model)
+		# Процедурные стены комнат (прототип, серые боксы).
+		_render_mall_walls(fn, fl)
 		for data: Dictionary in MapGen.mall_kiosks[fl]:
 			var kiosk := (MALL_KIOSKS[data["kind"]] as PackedScene).instantiate() as Node3D
 			fn.add_child(kiosk)
@@ -298,6 +300,24 @@ func _render_mall_floors() -> void:
 		_mall_label(fn, "ЭТАЖ %d" % (fl + 1), Vector3(0, 0.12, -15), Color("2b5559"), 0.025)
 		if fl == 0:
 			_mall_label(fn, "ВЫХОД ↓", Vector3(0, 0.15, MapGen.mall_exit.end.y + 1.0), Color("235741"), 0.016)
+
+
+func _render_mall_walls(parent: Node3D, fl: int) -> void:
+	if fl >= MapGen.mall_obstacles.size():
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.62, 0.63, 0.66)
+	mat.roughness = 0.9
+	var wall_h := 2.6
+	for w: Rect2 in MapGen.mall_obstacles[fl]:
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(w.size.x, wall_h, w.size.y)
+		mi.mesh = box
+		mi.material_override = mat
+		var c := w.get_center()
+		mi.position = Vector3(c.x, wall_h * 0.5, c.y)
+		parent.add_child(mi)
 
 
 func _mall_label(parent: Node3D, title: String, position3: Vector3, color: Color, pixel_size: float) -> void:

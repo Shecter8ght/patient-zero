@@ -18,6 +18,11 @@ var mall_entry := Rect2(-Tuning.MALL_ENTRANCE_W / 2, -Tuning.MALL_SIZE / 2 - 1.5
 var mall_exit := Rect2(-Tuning.MALL_ENTRANCE_W / 2, -Tuning.MALL_SIZE / 2 + Tuning.MALL_WALL_T, Tuning.MALL_ENTRANCE_W, 1.5)
 var mall_obstacles: Array = []   # Array[Array[Rect2]], индекс = floor-1
 
+# --- Комнаты ТЦ (одинаковы на всех этажах) ---
+var mall_rooms: Array = []       # Array[Dictionary] {id:int, rect:Rect2}
+var mall_doors: Array = []       # Array[Dictionary] {pos:Vector2, a:int, b:int}
+var _mall_adj:  Dictionary = {}  # node_id -> Array[{other:int, pos:Vector2}]
+
 # --- Переходы между этажами ---
 # Каждый: {rect, from_floor, to_floor, dest}
 var transitions: Array = []
@@ -57,31 +62,18 @@ func generate() -> void:
 func _place_mall() -> void:
 	# Full outdoor footprint prevents street agents spawning inside the shell.
 	buildings.append(mall_rect)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = Tuning.MAP_SEED + 9999
+
+	_build_mall_rooms()
+
+	# Стены комнат одинаковы на всех этажах. Киоски/магазины прототипа не рисуем.
 	mall_obstacles.resize(Tuning.MALL_FLOORS)
 	mall_kiosks.resize(Tuning.MALL_FLOORS)
 	mall_shops.resize(Tuning.MALL_FLOORS)
+	var walls := _build_mall_walls()
 	for fl in Tuning.MALL_FLOORS:
-		var obs: Array[Rect2] = []
-		var kiosks: Array = []
-		var shops: Array = []
-		# Central cross and rear gallery remain open between all transitions.
-		for x in [-10.0, 10.0]:
-			for z in [-13.0, -6.0, 6.0, 13.0]:
-				var rect := Rect2(Vector2(x, z) - Vector2(1.75, 1.375), Vector2(3.5, 2.75))
-				obs.append(rect)
-				kiosks.append({"rect": rect, "kind": rng.randi_range(0, 2)})
-		for side in [-1.0, 1.0]:
-			for z in [-15.0, -5.0, 5.0, 15.0]:
-				var center := Vector2(side * (Tuning.MALL_SIZE * 0.5 - 4.0), z)
-				var angle: float = -side * PI / 2.0
-				shops.append({"center": center, "angle": angle, "kind": (fl + shops.size()) % 3})
-				for local_rect in [Rect2(-4, -3, 8, 0.6), Rect2(-4, -2.4, 0.4, 5.4), Rect2(3.6, -2.4, 0.4, 5.4), Rect2(-3.2, 1.5, 2.5, 0.7)]:
-					obs.append(_rotated_shop_rect(local_rect, center, angle))
-		mall_obstacles[fl] = obs
-		mall_kiosks[fl] = kiosks
-		mall_shops[fl] = shops
+		mall_obstacles[fl] = walls.duplicate()
+		mall_kiosks[fl] = []
+		mall_shops[fl] = []
 
 	building_data.append({
 		"rect":         mall_rect,
@@ -93,6 +85,152 @@ func _place_mall() -> void:
 		"interior_rect": Rect2(),
 		"door_pos":     Vector2.ZERO
 	})
+
+
+# ---------------------------------------------------- Планировка ТЦ (комнаты)
+## Крестовидный атриум в центре, 4 угловые комнаты, у каждой одна дверь в атриум.
+## Узел 0 = атриум; узлы 1..4 = комнаты (NW, NE, SW, SE).
+func _build_mall_rooms() -> void:
+	mall_rooms.clear()
+	mall_doors.clear()
+	_mall_adj.clear()
+
+	var he := Tuning.MALL_SIZE * 0.5 - Tuning.MALL_WALL_T - 0.5   # внешняя граница комнат
+	var ab := Tuning.MALL_ATRIUM_HALF                            # полуширина атриума
+
+	# id: 1=NW, 2=NE, 3=SW, 4=SE. Дверь на вертикальном ребре (x=±ab), в атриум.
+	var defs := [
+		{"id": 1, "rect": Rect2(-he,  ab, he - ab, he - ab), "door_x": -ab},
+		{"id": 2, "rect": Rect2( ab,  ab, he - ab, he - ab), "door_x":  ab},
+		{"id": 3, "rect": Rect2(-he, -he, he - ab, he - ab), "door_x": -ab},
+		{"id": 4, "rect": Rect2( ab, -he, he - ab, he - ab), "door_x":  ab},
+	]
+	for d: Dictionary in defs:
+		var r: Rect2 = d["rect"]
+		mall_rooms.append({"id": d["id"], "rect": r})
+		var door := Vector2(d["door_x"], r.position.y + r.size.y * 0.5)
+		mall_doors.append({"pos": door, "a": 0, "b": d["id"]})
+
+	# Граф смежности из дверей (неориентированный).
+	for node in [0, 1, 2, 3, 4]:
+		_mall_adj[node] = []
+	for door: Dictionary in mall_doors:
+		_mall_adj[door["a"]].append({"other": door["b"], "pos": door["pos"]})
+		_mall_adj[door["b"]].append({"other": door["a"], "pos": door["pos"]})
+
+
+## Стены комнат: два внутренних ребра (к атриуму) у каждой, дверной вырез на
+## вертикальном ребре. Внешние стороны закрывает оболочка ТЦ + clamp push_out.
+func _build_mall_walls() -> Array[Rect2]:
+	var walls: Array[Rect2] = []
+	var ab := Tuning.MALL_ATRIUM_HALF
+	var wt := Tuning.MALL_ROOM_WALL_T
+	var dh := Tuning.MALL_DOOR_W * 0.5
+	for room: Dictionary in mall_rooms:
+		var r: Rect2 = room["rect"]
+		var door_x: float = -ab if r.position.x < 0.0 else ab
+		var door_z := r.position.y + r.size.y * 0.5
+		# Вертикальное ребро к атриуму (x=door_x) с проёмом по z.
+		walls.append_array(_wall_seg(true, door_x, r.position.y, r.end.y, wt, door_z, dh))
+		# Горизонтальное ребро к атриуму (сплошное).
+		var edge_z: float = r.position.y if r.position.y >= 0.0 else r.end.y
+		walls.append_array(_wall_seg(false, edge_z, r.position.x, r.end.x, wt, NAN, 0.0))
+		# Внешние рёбра (видимые стены изнутри; коллизия дублирует оболочку).
+		var outer_x: float = r.end.x if door_x > 0.0 else r.position.x
+		walls.append_array(_wall_seg(true, outer_x, r.position.y, r.end.y, wt, NAN, 0.0))
+		var outer_z: float = r.end.y if r.position.y >= 0.0 else r.position.y
+		walls.append_array(_wall_seg(false, outer_z, r.position.x, r.end.x, wt, NAN, 0.0))
+
+	# Не перекрывать эскалаторы: убираем стены, пересекающие их площадки.
+	var clear: Array[Rect2] = [mall_up.grow(0.9), mall_down.grow(0.9)]
+	var filtered: Array[Rect2] = []
+	for w: Rect2 in walls:
+		var blocked := false
+		for c: Rect2 in clear:
+			if w.intersects(c):
+				blocked = true
+				break
+		if not blocked:
+			filtered.append(w)
+	return filtered
+
+
+## Сегмент стены вдоль оси. vertical=true → стена по z при фиксированном x.
+## gap_c=NAN — сплошная; иначе вырез шириной 2*gap_h по центру gap_c.
+func _wall_seg(vertical: bool, fixed: float, lo: float, hi: float, t: float,
+		gap_c: float, gap_h: float) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var spans: Array = []
+	if is_nan(gap_c):
+		spans.append([lo, hi])
+	else:
+		spans.append([lo, gap_c - gap_h])
+		spans.append([gap_c + gap_h, hi])
+	for s: Array in spans:
+		var a: float = s[0]
+		var b: float = s[1]
+		if b - a < 0.05:
+			continue
+		if vertical:
+			out.append(Rect2(fixed - t * 0.5, a, t, b - a))
+		else:
+			out.append(Rect2(a, fixed - t * 0.5, b - a, t))
+	return out
+
+
+## Индекс комнаты, содержащей точку (0 = атриум).
+func mall_room_at(p: Vector2) -> int:
+	for room: Dictionary in mall_rooms:
+		if (room["rect"] as Rect2).has_point(p):
+			return room["id"]
+	return 0
+
+
+## Путь по этажу ТЦ: список вейпоинтов (двери + финальная точка to).
+## Пусто, если from и to в одной комнате (идти напрямую).
+func mall_path(from: Vector2, to: Vector2) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var ra := mall_room_at(from)
+	var rb := mall_room_at(to)
+	if ra == rb:
+		out.append(to)
+		return out
+	# BFS по маленькому графу узлов.
+	var prev := {ra: -1}
+	var queue := [ra]
+	var head := 0
+	while head < queue.size():
+		var cur: int = queue[head]
+		head += 1
+		if cur == rb:
+			break
+		for e: Dictionary in _mall_adj.get(cur, []):
+			var nxt: int = e["other"]
+			if not prev.has(nxt):
+				prev[nxt] = cur
+				queue.append(nxt)
+	if not prev.has(rb):
+		out.append(to)   # недостижимо — идём напрямую (fallback)
+		return out
+	# Восстанавливаем цепочку узлов rb..ra.
+	var chain: Array[int] = []
+	var n := rb
+	while n != -1:
+		chain.append(n)
+		n = prev[n]
+	chain.reverse()   # ra .. rb
+	# Двери между соседними узлами.
+	for i in range(chain.size() - 1):
+		out.append(_door_between(chain[i], chain[i + 1]))
+	out.append(to)
+	return out
+
+
+func _door_between(a: int, b: int) -> Vector2:
+	for e: Dictionary in _mall_adj.get(a, []):
+		if e["other"] == b:
+			return e["pos"]
+	return Vector2.ZERO
 
 
 # ----------------------------------------------------------------- Уличные здания
